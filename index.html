@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ISS CRM</title>
+<meta name="description" content="Infinity Sparkle Studios: production tracking from design to dispatch.">
+<meta name="theme-color" content="#8C6A2F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ISS CRM">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#F6F4EF; --surface:#FFFFFF; --surface-2:#EEE9DE; --ink:#221D16; --muted:#756A59;
+    --border:#DDD4C3; --accent:#8C6A2F; --accent-ink:#FFFFFF; --accent-soft:#8C6A2F16;
+    --accent2:#3F6864; --accent2-soft:#3F686414; --good:#3F7D5C; --warn:#B8752A; --danger:#AE3B34;
+    --shadow: 0 1px 2px rgba(34,29,22,.04), 0 8px 24px -12px rgba(34,29,22,.18);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#17140F; --surface:#211C15; --surface-2:#2A231A; --ink:#EEE7D8; --muted:#A79A83;
+      --border:#3A3122; --accent:#CB9F4F; --accent-ink:#1D1710; --accent-soft:#CB9F4F1F;
+      --accent2:#77A49D; --accent2-soft:#77A49D1A; --good:#63A886; --warn:#D99A4E; --danger:#DA6F68;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#17140F; --surface:#211C15; --surface-2:#2A231A; --ink:#EEE7D8; --muted:#A79A83;
+    --border:#3A3122; --accent:#CB9F4F; --accent-ink:#1D1710; --accent-soft:#CB9F4F1F;
+    --accent2:#77A49D; --accent2-soft:#77A49D1A; --good:#63A886; --warn:#D99A4E; --danger:#DA6F68;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5); color-scheme: dark;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; }
+  body{ background:var(--bg); color:var(--ink); font-family:"Public Sans", ui-sans-serif, system-ui, sans-serif; font-size:15px; line-height:1.5; min-height:100vh; }
+  .mono{ font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums; }
+  button, input, select, textarea{ font:inherit; color:inherit; }
+  h1,h2,h3{ font-family:"Fraunces", Georgia, serif; font-weight:600; margin:0; letter-spacing:-.01em; }
+
+  header.top{ position:sticky; top:0; z-index:10; background:var(--surface); border-bottom:1px solid var(--border); padding:env(safe-area-inset-top) 0 0; }
+  .top-inner{ max-width:1100px; margin:0 auto; padding:10px 16px 0; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .eyebrow{ text-transform:uppercase; letter-spacing:.11em; font-size:10.5px; font-weight:700; color:var(--accent); }
+  .brand h1{ font-size:19px; }
+  .who{ font-size:12px; color:var(--muted); text-align:right; }
+  nav.tabs{ max-width:1100px; margin:0 auto; padding:0 8px; display:flex; gap:2px; overflow-x:auto; }
+  nav.tabs a{ font-size:13.5px; font-weight:600; color:var(--muted); text-decoration:none; padding:11px 12px; border-bottom:2px solid transparent; white-space:nowrap; }
+  nav.tabs a.active{ color:var(--accent); border-bottom-color:var(--accent); }
+
+  main{ max-width:1100px; margin:0 auto; padding:18px 16px 80px; }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 16px 18px; box-shadow:var(--shadow); margin-bottom:14px; }
+  .card h2{ font-size:17px; margin-bottom:10px; }
+  .hint{ color:var(--muted); font-size:13px; margin:2px 0 12px; }
+  .grid{ display:grid; gap:12px; }
+  .g2{ grid-template-columns:1fr 1fr; } .g3{ grid-template-columns:repeat(3,1fr); } .g4{ grid-template-columns:repeat(4,1fr); }
+  @media (max-width:720px){ .g3,.g4{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:460px){ .g2,.g3,.g4{ grid-template-columns:1fr; } }
+  .field{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .field label{ font-size:12px; font-weight:600; color:var(--muted); }
+  .field .note{ font-size:11.5px; color:var(--muted); }
+  input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],select,textarea{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:10px 11px; width:100%; min-height:42px; }
+  textarea{ resize:vertical; min-height:70px; }
+  input:focus,select:focus,textarea:focus{ outline:2px solid var(--accent); outline-offset:0; border-color:var(--accent); }
+  .check{ display:flex; gap:10px; align-items:flex-start; padding:7px 0; cursor:pointer; }
+  .check input{ width:20px; height:20px; margin-top:1px; accent-color:var(--accent); flex:none; }
+  .seg{ display:flex; flex-wrap:wrap; gap:6px; }
+  .seg label{ border:1px solid var(--border); border-radius:999px; padding:8px 14px; cursor:pointer; background:var(--surface-2); font-size:14px; font-weight:500; }
+  .seg input{ position:absolute; opacity:0; pointer-events:none; }
+  .seg input:checked + span{ color:var(--accent); font-weight:700; }
+  .seg label:has(input:checked){ border-color:var(--accent); background:var(--accent-soft); }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; border:1px solid var(--border); background:var(--surface-2); color:var(--ink); border-radius:10px; padding:10px 16px; font-weight:600; font-size:14px; cursor:pointer; min-height:42px; text-decoration:none; }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .btn.good{ background:var(--good); border-color:var(--good); color:#fff; }
+  .btn.ghost{ background:transparent; }
+  .btn.small{ padding:6px 11px; min-height:34px; font-size:13px; }
+  .btn:disabled{ opacity:.55; cursor:default; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .spread{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap; }
+
+  .list{ display:grid; gap:8px; }
+  .item{ display:flex; justify-content:space-between; gap:12px; align-items:center; border:1px solid var(--border); border-radius:12px; padding:12px 14px; background:var(--surface); text-decoration:none; color:inherit; box-shadow:var(--shadow); }
+  .item:hover{ border-color:var(--accent); }
+  .item .t{ font-weight:600; }
+  .meta{ font-size:12.5px; color:var(--muted); }
+  .pill{ display:inline-block; font-size:11.5px; font-weight:700; border-radius:999px; padding:3px 9px; background:var(--surface-2); color:var(--muted); white-space:nowrap; }
+  .pill.go{ background:var(--accent-soft); color:var(--accent); }
+  .pill.ok{ background:color-mix(in srgb, var(--good) 14%, transparent); color:var(--good); }
+  .pill.wait{ background:var(--surface-2); color:var(--muted); }
+  .pill.rush{ background:color-mix(in srgb, var(--danger) 14%, transparent); color:var(--danger); }
+  .section-title{ font-size:12px; text-transform:uppercase; letter-spacing:.08em; font-weight:700; color:var(--muted); margin:18px 0 8px; }
+
+  .stages{ display:grid; gap:10px; }
+  .stage{ border:1px solid var(--border); border-radius:14px; background:var(--surface); box-shadow:var(--shadow); overflow:hidden; }
+  .stage > summary{ list-style:none; cursor:pointer; padding:13px 16px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .stage > summary::-webkit-details-marker{ display:none; }
+  .stage[open] > summary{ border-bottom:1px solid var(--border); }
+  .stage .body{ padding:14px 16px 16px; display:grid; gap:12px; }
+  .stage.locked{ opacity:.7; }
+  .track{ display:flex; gap:4px; flex-wrap:wrap; margin-top:8px; }
+  .track span{ font-size:11px; padding:3px 8px; border-radius:6px; background:var(--surface-2); color:var(--muted); }
+  .track span.done{ background:color-mix(in srgb, var(--good) 14%, transparent); color:var(--good); }
+  .track span.now{ background:var(--accent); color:var(--accent-ink); }
+  .track span.skip{ text-decoration:line-through; opacity:.6; }
+  .kv{ display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:13.5px; }
+  .kv dt{ color:var(--muted); } .kv dd{ margin:0; }
+  .doc{ background:none; border:none; padding:0; color:var(--accent2); text-decoration:underline; cursor:pointer; font-size:13px; }
+  .msg{ position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:11px 16px; border-radius:10px; font-size:14px; max-width:calc(100vw - 32px); z-index:50; opacity:0; transition:opacity .2s; pointer-events:none; }
+  .msg.show{ opacity:1; } .msg.err{ background:var(--danger); color:#fff; }
+  .empty{ color:var(--muted); padding:18px; text-align:center; border:1px dashed var(--border); border-radius:12px; }
+  .login{ max-width:400px; margin:8vh auto 0; }
+  .sub{ border-left:3px solid var(--accent-soft); padding-left:12px; display:grid; gap:12px; }
+  table.t{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  table.t th{ text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); border-bottom:1px solid var(--border); padding:6px; }
+  table.t td{ border-bottom:1px solid var(--border); padding:8px 6px; vertical-align:top; }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+<header class="top" id="top" style="display:none;">
+  <div class="top-inner">
+    <div class="brand"><div><div class="eyebrow">Infinity Sparkle Studios</div><h1>ISS CRM</h1></div></div>
+    <div class="who"><div id="whoName"></div><button class="btn ghost small" type="button" id="signOut">Sign out</button></div>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+<main id="app"></main>
+<div class="msg" id="msg" role="status"></div>
+
+<script>
+(() => {
+  'use strict';
+  // Project URL and publishable key are public by design; every table is protected by the CRM's own login rules.
+  const CRM = { url:'https://zyxwadchlypfkwkqprdm.supabase.co', key:'sb_publishable_mwmgwUsAB7cPI4F1T0AyjA_qOsVfe2A' };
+  const BUCKET = 'production-files';
+  const $ = id => document.getElementById(id);
+  const app = $('app');
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const today = () => new Date().toLocaleDateString('en-CA', {timeZone:'Africa/Johannesburg'});
+  const fmtDate = iso => iso ? new Date(String(iso).length > 10 ? iso : iso+'T12:00:00').toLocaleDateString('en-ZA', {day:'numeric', month:'short', year:'numeric'}) : '';
+  const fmtR = v => v == null ? '' : 'R ' + Number(v).toLocaleString('en-ZA', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const nOrNull = v => { v = String(v ?? '').trim(); return v === '' ? null : Number(v); };
+  const sOrNull = v => { v = String(v ?? '').trim(); return v === '' ? null : v; };
+
+  let S = null, ME = null, TEMPLATES = [], TPL = {};
+
+  function toast(t, err){ const m=$('msg'); m.textContent=t; m.className='msg show'+(err?' err':''); clearTimeout(toast.t); toast.t=setTimeout(()=>m.className='msg', err?6000:3000); }
+
+  // ---------- session ----------
+  const SKEY = 'issCrmSession';
+  function keep(sess){ S = sess; try { sess ? localStorage.setItem(SKEY, JSON.stringify(sess)) : localStorage.removeItem(SKEY); } catch(e){} }
+  try { S = JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch(e){ S = null; }
+  async function auth(body, grant){
+    const r = await fetch(CRM.url+'/auth/v1/token?grant_type='+grant, { method:'POST', headers:{ apikey:CRM.key, 'Content-Type':'application/json' }, body:JSON.stringify(body) });
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error(/invalid/i.test(j.error_description||j.msg||'') ? 'That email and password didn\'t match.' : (j.error_description || j.msg || 'Sign-in failed'));
+    return { access_token:j.access_token, refresh_token:j.refresh_token, expires_at:Date.now()+(j.expires_in||3600)*1000 };
+  }
+  async function token(){
+    if (!S) throw new Error('signin');
+    if (Date.now() > S.expires_at - 60000){
+      try { keep(await auth({ refresh_token:S.refresh_token }, 'refresh_token')); }
+      catch(e){ keep(null); throw new Error('signin'); }
+    }
+    return S.access_token;
+  }
+  function friendly(m){
+    const map = [[/row-level security|permission denied/i, 'You don\'t have access to that. Ask the Owner to give you this stage.'],
+      [/jobs_method_matches_route/, 'For in-house work, choose Cast or Handmade.'],
+      [/violates check constraint/i, 'Some details aren\'t valid. Please check the form.']];
+    for (const [re,t] of map) if (re.test(m)) return t;
+    return m;
+  }
+  async function api(method, path, body, prefer){
+    let r;
+    try {
+      r = await fetch(CRM.url+'/rest/v1/'+path, { method, headers:{ apikey:CRM.key, Authorization:'Bearer '+(await token()), 'Content-Type':'application/json', Prefer: prefer || 'return=representation' }, body: body===undefined ? undefined : JSON.stringify(body) });
+    } catch(e){ if (e.message==='signin') { showLogin(); throw new Error('Please sign in again.'); } throw new Error('Could not reach the CRM. Check your internet connection.'); }
+    const txt = await r.text(); let j=null; try{ j = txt ? JSON.parse(txt) : null; }catch(e){}
+    if (r.status === 401){ keep(null); showLogin(); throw new Error('Please sign in again.'); }
+    if (!r.ok) throw new Error(friendly((j && (j.message || j.details)) || ('Error '+r.status)));
+    return j;
+  }
+  const rpc = (fn, args) => api('POST', 'rpc/'+fn, args || {});
+  async function upload(file, folder){
+    if (!file) return null;
+    if (file.size > 15*1024*1024) throw new Error('That file is over 15 MB. Please use a smaller photo.');
+    const path = folder.replace(/[^A-Za-z0-9_-]+/g,'_')+'/'+Date.now()+'-'+file.name.replace(/[^A-Za-z0-9._-]+/g,'_').slice(-60);
+    const r = await fetch(CRM.url+'/storage/v1/object/'+BUCKET+'/'+path, { method:'POST', headers:{ apikey:CRM.key, Authorization:'Bearer '+(await token()), 'Content-Type': file.type || 'application/octet-stream' }, body:file });
+    if (!r.ok){ const j = await r.json().catch(()=>({})); throw new Error('Upload failed: '+(j.message||r.status)); }
+    return path;
+  }
+  window.openDoc = async function(path){
+    try {
+      const r = await fetch(CRM.url+'/storage/v1/object/sign/'+BUCKET+'/'+path, { method:'POST', headers:{ apikey:CRM.key, Authorization:'Bearer '+(await token()), 'Content-Type':'application/json' }, body:JSON.stringify({ expiresIn:600 }) });
+      const j = await r.json(); if (!r.ok || !j.signedURL) throw new Error(j.message || 'Could not open the file');
+      window.open(CRM.url+'/storage/v1'+j.signedURL, '_blank', 'noopener');
+    } catch(e){ toast(e.message, true); }
+  };
+  const docBtn = (path, label) => path ? `<button class="doc" type="button" onclick="openDoc('${esc(path)}')">${esc(label)}</button>` : '';
+
+  // ---------- login ----------
+  function showLogin(){
+    $('top').style.display = 'none';
+    app.innerHTML = `<div class="card login"><h2 style="font-size:22px;margin-bottom:4px;">ISS CRM</h2><p class="hint">Sign in with the login the Owner set up for you.</p>
+      <form id="lf" class="grid"><div class="field"><label for="le">Email</label><input type="email" id="le" autocomplete="username" required></div>
+      <div class="field"><label for="lp">Password</label><input type="password" id="lp" autocomplete="current-password" required></div>
+      <button class="btn primary" type="submit" id="lb">Sign in</button><p class="hint" id="lm" role="status"></p></form></div>`;
+    $('lf').addEventListener('submit', async e => {
+      e.preventDefault(); $('lb').disabled = true; $('lm').textContent = 'Signing in…';
+      try { keep(await auth({ email:$('le').value.trim(), password:$('lp').value }, 'password')); await boot(); }
+      catch(err){ $('lm').textContent = err.message.indexOf('fetch')>=0 ? 'Could not reach the CRM. Check your internet connection.' : err.message; $('lb').disabled = false; }
+    });
+  }
+  $('signOut').addEventListener('click', ()=>{
+    const t = S && S.access_token; if (t) fetch(CRM.url+'/auth/v1/logout', { method:'POST', headers:{ apikey:CRM.key, Authorization:'Bearer '+t } }).catch(()=>{});
+    keep(null); ME = null; location.hash = ''; showLogin();
+  });
+
+  // ---------- shell ----------
+  const label = st => (TPL[st] && TPL[st].label) || st;
+  function nav(){
+    const tabs = [['#/work','My work']];
+    if (ME.supervisor) tabs.push(['#/board','All jobs'], ['#/new','+ New job']);
+    tabs.push(['#/products','Products']);
+    tabs.push(['#/kpi', ME.supervisor ? 'Hours & KPIs' : 'My hours']);
+    if (ME.supervisor) tabs.push(['#/team','Team']);
+    const cur = location.hash.split('/').slice(0,2).join('/') || '#/work';
+    $('tabs').innerHTML = tabs.map(([h,t])=>`<a href="${h}" class="${cur===h?'active':''}">${t}</a>`).join('');
+  }
+  async function boot(){
+    try {
+      ME = await rpc('my_access');
+      if (!ME || !ME.role){ app.innerHTML = `<div class="card login"><h2>No access yet</h2><p class="hint">You're signed in as ${esc(ME && ME.email)}, but the Owner hasn't given you any stages yet. Ask them to add you under Team.</p><button class="btn" onclick="location.reload()">Try again</button></div>`; $('top').style.display=''; $('whoName').textContent = ME && ME.email || ''; $('tabs').innerHTML=''; return; }
+      TEMPLATES = await api('GET', 'stage_templates?select=*&order=sort_order');
+      TPL = Object.fromEntries(TEMPLATES.map(t=>[t.stage,t]));
+      $('top').style.display = '';
+      $('whoName').textContent = (ME.name || ME.email) + ' · ' + (ME.supervisor ? 'all stages' : (ME.stages||[]).map(label).join(', ') || 'no stages');
+      route();
+    } catch(e){ if (!S) showLogin(); else app.innerHTML = `<div class="card"><p>${esc(e.message)}</p><button class="btn" onclick="location.reload()">Try again</button></div>`; }
+  }
+  window.addEventListener('hashchange', ()=>{ if (ME) route(); });
+  // Refresh when the app comes back into view, so pages never show someone else's stale update
+  let lastShown = Date.now();
+  document.addEventListener('visibilitychange', ()=>{
+    if (document.visibilityState === 'visible' && ME && Date.now() - lastShown > 20000 && !document.querySelector('input:focus, textarea:focus')) route();
+    if (document.visibilityState === 'hidden') lastShown = Date.now();
+  });
+  function route(){
+    nav();
+    const [, page, id] = location.hash.split('/');
+    const go = { kpi:pageKpi, work:pageWork, board:pageBoard, new:pageNewJob, job:()=>pageJob(id), products:pageProducts, product:()=>pageProduct(id), team:pageTeam }[page || 'work'] || pageWork;
+    if (['board','new','team'].includes(page) && !ME.supervisor) return pageWork();
+    app.innerHTML = '<p class="hint">Loading…</p>';
+    go().catch(e => { app.innerHTML = `<div class="card"><p>${esc(e.message)}</p></div>`; });
+  }
+
+  function trackHtml(stages, current){
+    return '<div class="track">' + stages.map(s=>`<span class="${s.status==='done'?'done':s.status==='skipped'?'skip':s.stage===current?'now':''}">${esc(label(s.stage))}</span>`).join('') + '</div>';
+  }
+  function jobLine(j, extra){
+    const p = j.products;
+    return `<a class="item" href="#/job/${j.id}"><span><span class="t">${esc(j.title)}</span>
+      <div class="meta"><span class="mono">${esc(j.job_no)}</span>${p?' · Product <span class="mono">'+esc(p.product_no)+'</span>':''}${j.metal?' · '+esc(j.metal):''}${j.due_date?' · due '+fmtDate(j.due_date):''}</div>${extra||''}</span>
+      <span class="row">${j.priority==='rush'?'<span class="pill rush">Rush</span>':''}${j.status==='on_hold'?'<span class="pill">On hold</span>':''}<span class="pill go">${esc(label(j.current_stage)||'Done')}</span></span></a>`;
+  }
+
+  // ---------- My work ----------
+  async function pageWork(){
+    const rows = await api('GET', 'job_stages?select=id,stage,status,updated_at,jobs!inner(id,job_no,title,metal,due_date,priority,status,current_stage,products(product_no,name))&status=in.(waiting,in_progress)&jobs.status=in.(active,on_hold)&order=sort_order');
+    const now = rows.filter(r => r.status==='in_progress' || r.jobs.current_stage===r.stage);
+    const later = rows.filter(r => !now.includes(r));
+    const block = (title, list, empty) => `<div class="section-title">${title}</div>` + (list.length ? '<div class="list">'+list.map(r=>{
+      const j = r.jobs;
+      return `<a class="item" href="#/job/${j.id}"><span><span class="t">${esc(j.title)}</span>
+        <div class="meta"><span class="mono">${esc(j.job_no)}</span>${j.products?' · <span class="mono">'+esc(j.products.product_no)+'</span>':''}${j.metal?' · '+esc(j.metal):''}${j.due_date?' · due '+fmtDate(j.due_date):''}</div></span>
+        <span class="row">${j.priority==='rush'?'<span class="pill rush">Rush</span>':''}<span class="pill ${r.status==='in_progress'?'go':'wait'}">${esc(label(r.stage))}${r.status==='in_progress'?' · busy':''}</span></span></a>`;
+    }).join('')+'</div>' : `<div class="empty">${empty}</div>`);
+    const clock = await rpc('my_clock').catch(()=>null);
+    app.innerHTML = clockCard(clock) + `<h2 style="margin:4px 0 2px;">My work</h2><p class="hint">Jobs at your stage${(ME.stages||[]).length>1?'s':''}: ${(ME.stages||[]).map(label).map(esc).join(', ')}.</p>`
+      + block('Ready for you', now, 'Nothing waiting for you right now.')
+      + block('Coming up', later, 'Nothing coming up.');
+    wireClock();
+  }
+  const hm = m => { m = Math.max(0, Math.round(m||0)); return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m'; };
+  const timeSA = iso => new Date(iso).toLocaleTimeString('en-ZA', {hour:'2-digit', minute:'2-digit', timeZone:'Africa/Johannesburg'});
+  function clockCard(c){
+    if (!c) return '';
+    const on = !!c.open_since;
+    return `<div class="card" style="border-color:${on?'var(--good)':'var(--border)'};"><div class="spread"><div>
+      <div class="meta">${on ? 'Clocked in since '+timeSA(c.open_since) : 'You are not clocked in'}</div>
+      <div><strong>Today ${hm(c.today_min)}</strong> <span class="meta">· this week ${hm(c.week_min)}</span></div></div>
+      <div class="row">${on ? '<button class="btn" type="button" id="clk-out">Clock out</button>' : '<button class="btn good" type="button" id="clk-in">Clock in</button>'}</div></div></div>`;
+  }
+  function wireClock(){
+    const i = $('clk-in'), o = $('clk-out');
+    if (i) i.addEventListener('click', async()=>{ i.disabled=true; try{ await rpc('clock_in', {}); toast('Clocked in.'); route(); }catch(e){ toast(e.message,true); i.disabled=false; } });
+    if (o) o.addEventListener('click', async()=>{
+      const note = prompt('Clocking out. Anything to note about today? (optional)', '');
+      if (note === null) return;
+      o.disabled=true; try{ await rpc('clock_out', { p_note: note }); toast('Clocked out.'); route(); }catch(e){ toast(e.message,true); o.disabled=false; } });
+  }
+
+  // ---------- Hours & KPIs ----------
+  function periodRange(key){
+    const t = new Date(today()+'T12:00:00'), iso = d => d.toLocaleDateString('en-CA');
+    const day = (t.getDay()+6)%7;
+    if (key==='week'){ const a=new Date(t); a.setDate(t.getDate()-day); return [iso(a), iso(t)]; }
+    if (key==='lastweek'){ const a=new Date(t); a.setDate(t.getDate()-day-7); const b=new Date(a); b.setDate(a.getDate()+6); return [iso(a), iso(b)]; }
+    if (key==='month'){ return [iso(new Date(t.getFullYear(), t.getMonth(), 1)), iso(t)]; }
+    if (key==='lastmonth'){ return [iso(new Date(t.getFullYear(), t.getMonth()-1, 1)), iso(new Date(t.getFullYear(), t.getMonth(), 0))]; }
+    return null;
+  }
+  async function pageKpi(){
+    const saved = (()=>{ try{ return JSON.parse(sessionStorage.getItem('issKpiRange')||'null'); }catch(e){ return null; } })();
+    const [from0, to0] = saved || periodRange('month');
+    app.innerHTML = `<h2 style="margin:4px 0 2px;">${ME.supervisor?'Hours & KPIs':'My hours'}</h2><p class="hint">${ME.supervisor?'Hours come from clock in / clock out. Stage figures come from the stages each person marked done.':'Your hours and the stages you completed.'}</p>
+      <div class="card"><div class="row">${[['week','This week'],['lastweek','Last week'],['month','This month'],['lastmonth','Last month']].map(([k,t])=>`<button class="btn small" type="button" data-per="${k}">${t}</button>`).join('')}</div>
+      <div class="grid g3" style="margin-top:10px;"><div class="field"><label>From</label><input type="date" id="kp-from" value="${from0}"></div><div class="field"><label>To</label><input type="date" id="kp-to" value="${to0}"></div><div class="field" style="justify-content:flex-end;"><button class="btn primary" type="button" id="kp-go">Show</button></div></div></div>
+      <div id="kp-out"><p class="hint">Loading…</p></div>`;
+    const load = async () => {
+      const from = $('kp-from').value, to = $('kp-to').value;
+      try { sessionStorage.setItem('issKpiRange', JSON.stringify([from,to])); } catch(e){}
+      const [rows, sess] = await Promise.all([ rpc('kpi_report', { p_from:from, p_to:to }), rpc('sessions_list', { p_from:from, p_to:to }) ]);
+      const stageRows = r => Object.entries(r.by_stage||{}).sort((a,b)=>(TPL[a[0]]||{}).sort_order-(TPL[b[0]]||{}).sort_order).map(([st,v])=>`<tr><td>${esc(label(st))}</td><td class="mono">${v.done}</td><td class="mono">${v.avg_min!=null?hm(v.avg_min):'—'}</td></tr>`).join('');
+      $('kp-out').innerHTML = (rows.length ? rows.map(r=>`<div class="card"><div class="spread"><div><strong>${esc(r.name)}</strong><div class="meta">${esc(r.role||'')}${r.open_session?' · clocked in now':''}</div></div></div>
+        <div class="grid g4" style="margin-top:10px;">
+          <div><div class="meta">Hours worked</div><div class="mono" style="font-size:20px;">${Number(r.hours_worked).toFixed(1)}</div><div class="meta">${r.sessions} session${r.sessions===1?'':'s'}</div></div>
+          <div><div class="meta">Stages done</div><div class="mono" style="font-size:20px;">${r.stages_done}</div><div class="meta">${r.jobs_touched} job${r.jobs_touched===1?'':'s'}${r.rush_stages_done?' · '+r.rush_stages_done+' rush':''}</div></div>
+          <div><div class="meta">Avg time per stage</div><div class="mono" style="font-size:20px;">${r.minutes_per_stage!=null?hm(r.minutes_per_stage):'—'}</div><div class="meta">${hm(r.stage_minutes)} logged on stages</div></div>
+          <div><div class="meta">Avg metal loss</div><div class="mono" style="font-size:20px;">${r.avg_metal_loss_pct!=null?Number(r.avg_metal_loss_pct).toFixed(1)+'%':'—'}</div><div class="meta">casting, handmade &amp; finishing</div></div></div>
+        ${stageRows(r) ? '<table class="t" style="margin-top:12px;"><thead><tr><th>Stage</th><th>Done</th><th>Avg time</th></tr></thead><tbody>'+stageRows(r)+'</tbody></table>' : ''}</div>`).join('') : '<div class="empty">No team members yet.</div>')
+      + `<div class="card"><h2>Clock in / out record</h2>${sess.length ? `<table class="t"><thead><tr>${ME.supervisor?'<th>Who</th>':''}<th>Date</th><th>In</th><th>Out</th><th>Time</th><th>Note</th>${ME.supervisor?'<th></th>':''}</tr></thead><tbody>${sess.map(x=>`<tr>${ME.supervisor?'<td>'+esc(x.name)+'</td>':''}<td>${fmtDate(x.clock_in)}</td><td class="mono">${timeSA(x.clock_in)}</td><td class="mono">${x.clock_out?timeSA(x.clock_out):'<span class="pill go">still in</span>'}</td><td class="mono">${x.minutes!=null?hm(x.minutes):''}</td><td>${esc(x.note||'')}${x.edited?' <span class="meta">(corrected)</span>':''}</td>${ME.supervisor?`<td><button class="btn small" type="button" data-fix="${x.id}">Correct</button></td>`:''}</tr>`).join('')}</tbody></table>` : '<p class="hint">No clock-ins in this period.</p>'}</div>`;
+      $('kp-out').querySelectorAll('[data-fix]').forEach(b=>b.addEventListener('click', async()=>{
+        const x = sess.find(y=>y.id===b.dataset.fix);
+        const toLocal = iso => iso ? new Date(iso).toLocaleString('sv-SE', {timeZone:'Africa/Johannesburg'}).slice(0,16) : '';
+        const a = prompt('Clock in for '+x.name+' (YYYY-MM-DD HH:MM):', toLocal(x.clock_in)); if (a===null) return;
+        if (!/^\s*\d{4}-\d{2}-\d{2}[ T]\d{1,2}:\d{2}\s*$/.test(a)){ toast('Clock-in time is needed, like 2026-11-20 08:00.', true); return; }
+        const c = prompt('Clock out (YYYY-MM-DD HH:MM), leave empty if still in:', toLocal(x.clock_out)); if (c===null) return;
+        if (c.trim() && !/^\s*\d{4}-\d{2}-\d{2}[ T]\d{1,2}:\d{2}\s*$/.test(c)){ toast('Use the format 2026-11-20 16:30.', true); return; }
+        const iso = v => { v = v.trim().replace(' ','T'); if (!v) return null; const [d,t] = v.split('T'); const [h,m] = t.split(':'); return new Date(d+'T'+h.padStart(2,'0')+':'+m+':00+02:00').toISOString(); };
+        try { await api('PATCH', `work_sessions?id=eq.${x.id}`, { clock_in: iso(a), clock_out: iso(c) }); toast('Corrected.'); load(); }
+        catch(e){ toast(/order/.test(e.message)?'Clock out must be after clock in.':e.message, true); }
+      }));
+    };
+    app.querySelectorAll('[data-per]').forEach(b=>b.addEventListener('click', ()=>{ const [a,c]=periodRange(b.dataset.per); $('kp-from').value=a; $('kp-to').value=c; load().catch(e=>toast(e.message,true)); }));
+    $('kp-go').addEventListener('click', ()=>load().catch(e=>toast(e.message,true)));
+    await load();
+  }
+
+  // ---------- All jobs (supervisor) ----------
+  async function pageBoard(){
+    const jobs = await api('GET', 'jobs?select=id,job_no,title,metal,due_date,priority,status,current_stage,order_no,products(product_no,name)&order=created_at.desc&limit=200');
+    const open = jobs.filter(j=>['active','on_hold'].includes(j.status)), closed = jobs.filter(j=>!['active','on_hold'].includes(j.status));
+    const byStage = TEMPLATES.map(t=>[t, open.filter(j=>j.current_stage===t.stage)]).filter(([,l])=>l.length);
+    app.innerHTML = `<div class="spread"><h2 style="margin:4px 0;">All jobs</h2><a class="btn primary small" href="#/new">+ New job</a></div>`
+      + (byStage.length ? byStage.map(([t,l])=>`<div class="section-title">${esc(t.label)} · ${l.length}</div><div class="list">${l.map(j=>jobLine(j)).join('')}</div>`).join('') : '<div class="empty" style="margin-top:12px;">No open jobs.</div>')
+      + (closed.length ? `<details style="margin-top:18px;"><summary class="section-title" style="cursor:pointer;">Completed &amp; cancelled · ${closed.length}</summary><div class="list">${closed.map(j=>jobLine(j)).join('')}</div></details>` : '');
+  }
+
+  // ---------- New job (supervisor) ----------
+  async function pageNewJob(){
+    app.innerHTML = `<h2 style="margin:4px 0 12px;">New job</h2>
+    <form id="nj">
+      <div class="card"><h2>The piece</h2>
+        <div class="grid g2">
+          <div class="field"><label>Title</label><input type="text" id="nj-title" required placeholder="e.g. Memory Ring"></div>
+          <div class="field"><label>Quantity</label><input type="number" id="nj-qty" value="1" min="1"></div>
+        </div>
+        <div class="field" style="margin-top:12px;"><label>Design</label>
+          <div class="seg"><label><input type="radio" name="nj-design" value="new" checked><span>New design (Design stage creates the product number)</span></label><label><input type="radio" name="nj-design" value="existing"><span>Existing product</span></label></div></div>
+        <div id="nj-prodBox" class="sub hidden" style="margin-top:12px;"><div class="field"><label>Find product (number or name)</label><input type="text" id="nj-prodSearch" placeholder="P-0001 or name"></div><div id="nj-prodList" class="list"></div><input type="hidden" id="nj-product"></div>
+        <div class="grid g4" style="margin-top:12px;">
+          <div class="field"><label>Metal</label><select id="nj-metal"><option>Silver</option><option>Non-tarnish silver</option><option>9ct</option><option>14ct</option><option>18ct</option><option>Platinum</option><option>Resin (plated)</option><option>Other</option></select></div>
+          <div class="field"><label>Colour</label><select id="nj-colour"><option value="">—</option><option>Yellow</option><option>White</option><option>Rose</option></select></div>
+          <div class="field"><label>Ring size</label><input type="text" id="nj-size" placeholder="e.g. N"></div>
+          <div class="field"><label>Due date</label><input type="date" id="nj-due"></div>
+        </div>
+        <label class="check"><input type="checkbox" id="nj-rush"> Rush job</label>
+      </div>
+      <div class="card"><h2>How it's made</h2>
+        <div class="field"><label>Resin print?</label><div class="seg"><label><input type="radio" name="nj-print" value="1" checked><span>Yes, 3D print</span></label><label><input type="radio" name="nj-print" value="0"><span>No print</span></label></div></div>
+        <div class="field" style="margin-top:12px;"><label>Made by</label><div class="seg"><label><input type="radio" name="nj-route" value="in_house" checked><span>In-house</span></label><label><input type="radio" name="nj-route" value="pmt"><span>PMT outsource</span></label></div></div>
+        <div class="field" id="nj-methodBox" style="margin-top:12px;"><label>In-house method</label><div class="seg"><label><input type="radio" name="nj-method" value="cast" checked><span>Casting</span></label><label><input type="radio" name="nj-method" value="handmade"><span>Handmade</span></label></div></div>
+        <label class="check" style="margin-top:8px;"><input type="checkbox" id="nj-plating"> Needs plating</label>
+        <p class="hint" id="nj-flow" style="margin-top:8px;"></p>
+      </div>
+      <div class="card"><h2>Client order (optional)</h2>
+        <div class="field"><label>Link to an order (order no. or title)</label><input type="text" id="nj-orderSearch" placeholder="ISS-2026-…"></div>
+        <div id="nj-orderList" class="list" style="margin-top:8px;"></div><input type="hidden" id="nj-order"><input type="hidden" id="nj-orderNo">
+        <div class="field" style="margin-top:12px;"><label>Notes for the team</label><textarea id="nj-notes"></textarea></div>
+      </div>
+      <button class="btn primary" type="submit" id="nj-save">Create job</button>
+    </form>`;
+    const radio = n => (document.querySelector(`input[name="${n}"]:checked`)||{}).value;
+    const flow = () => {
+      const st = [];
+      if (radio('nj-design')==='new') st.push('design');
+      if (radio('nj-print')==='1') st.push('printing');
+      st.push(radio('nj-route')==='pmt' ? 'pmt' : radio('nj-method')==='handmade' ? 'handmade' : 'casting');
+      st.push('finishing'); if ($('nj-plating').checked) st.push('plating'); st.push('packaging','dispatch_safe');
+      $('nj-methodBox').classList.toggle('hidden', radio('nj-route')==='pmt');
+      $('nj-prodBox').classList.toggle('hidden', radio('nj-design')!=='existing');
+      $('nj-flow').textContent = 'Stages: ' + st.map(label).join(' → ');
+    };
+    document.querySelectorAll('#nj input').forEach(i=>i.addEventListener('change', flow)); flow();
+    let t1, t2;
+    $('nj-prodSearch').addEventListener('input', ()=>{ clearTimeout(t1); t1=setTimeout(async()=>{
+      const q = $('nj-prodSearch').value.replace(/[,()*%]/g,' ').trim(); if (q.length<2){ $('nj-prodList').innerHTML=''; return; }
+      const e = encodeURIComponent('*'+q+'*');
+      const rows = await api('GET', `products?select=id,product_no,name,product_type&or=(product_no.ilike.${e},name.ilike.${e})&limit=8`).catch(()=>[]);
+      $('nj-prodList').innerHTML = rows.map(p=>`<button type="button" class="item" data-p="${p.id}"><span><span class="t mono">${esc(p.product_no)}</span> ${esc(p.name)}</span><span class="meta">Choose</span></button>`).join('') || '<p class="hint">No product found.</p>';
+      $('nj-prodList').querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click',()=>{ $('nj-product').value=b.dataset.p; $('nj-prodList').innerHTML=''; $('nj-prodSearch').value=b.querySelector('.t').textContent+' '+rows.find(r=>r.id===b.dataset.p).name; if(!$('nj-title').value) $('nj-title').value=rows.find(r=>r.id===b.dataset.p).name; }));
+    }, 300); });
+    $('nj-orderSearch').addEventListener('input', ()=>{ clearTimeout(t2); t2=setTimeout(async()=>{
+      const q = $('nj-orderSearch').value.replace(/[,()*%]/g,' ').trim(); if (q.length<2){ $('nj-orderList').innerHTML=''; return; }
+      const e = encodeURIComponent('*'+q+'*');
+      const rows = await api('GET', `orders?select=id,order_no,title&or=(order_no.ilike.${e},title.ilike.${e})&order=created_at.desc&limit=8`).catch(()=>[]);
+      $('nj-orderList').innerHTML = rows.map(o=>`<button type="button" class="item" data-o="${o.id}" data-no="${esc(o.order_no)}"><span><span class="t mono">${esc(o.order_no)}</span> ${esc(o.title||'')}</span><span class="meta">Link</span></button>`).join('') || '<p class="hint">No order found.</p>';
+      $('nj-orderList').querySelectorAll('[data-o]').forEach(b=>b.addEventListener('click',()=>{ $('nj-order').value=b.dataset.o; $('nj-orderNo').value=b.dataset.no; $('nj-orderSearch').value=b.textContent.replace('Link','').trim(); $('nj-orderList').innerHTML=''; }));
+    }, 300); });
+    $('nj').addEventListener('submit', async e=>{
+      e.preventDefault();
+      const existing = radio('nj-design')==='existing';
+      if (existing && !$('nj-product').value){ toast('Choose the existing product, or pick New design.', true); return; }
+      const route = radio('nj-route');
+      $('nj-save').disabled = true;
+      try {
+        const rows = await api('POST', 'jobs?select=id,job_no', {
+          title: $('nj-title').value.trim(), quantity: nOrNull($('nj-qty').value) || 1,
+          product_id: existing ? $('nj-product').value : null, needs_design: !existing,
+          metal: sOrNull($('nj-metal').value), colour: sOrNull($('nj-colour').value), ring_size: sOrNull($('nj-size').value),
+          due_date: sOrNull($('nj-due').value), priority: $('nj-rush').checked ? 'rush' : 'normal',
+          resin_print: radio('nj-print')==='1', route, method: route==='pmt' ? null : radio('nj-method'),
+          needs_plating: $('nj-plating').checked, order_id: sOrNull($('nj-order').value), order_no: sOrNull($('nj-orderNo').value),
+          notes: sOrNull($('nj-notes').value) });
+        toast('Job '+rows[0].job_no+' created.');
+        location.hash = '#/job/'+rows[0].id;
+      } catch(err){ toast(err.message, true); $('nj-save').disabled = false; }
+    });
+  }
+
+  // ---------- Job page ----------
+  async function pageJob(id){
+    const [jobs, stages, props] = await Promise.all([
+      api('GET', `jobs?id=eq.${id}&select=*,products(*)`),
+      api('GET', `job_stages?job_id=eq.${id}&order=sort_order`),
+      api('GET', `print_props?job_id=eq.${id}&order=created_at`)
+    ]);
+    const j = jobs[0];
+    if (!j){ app.innerHTML = '<div class="card"><p>This job isn\'t at any of your stages.</p><a class="btn" href="#/work">Back to my work</a></div>'; return; }
+    const p = j.products;
+    const how = [j.resin_print?'3D print':'No print', j.route==='pmt'?'PMT outsource':(j.method==='handmade'?'In-house, handmade':'In-house, cast'), j.needs_plating?'plated':null].filter(Boolean).join(' · ');
+    let html = `<div class="card"><div class="spread"><div><div class="meta mono">${esc(j.job_no)}${j.order_no?' · Order '+esc(j.order_no):''}</div><h2 style="font-size:21px;margin:2px 0 4px;">${esc(j.title)}</h2>
+      <div class="meta">${p?'Product <a href="#/product/'+p.id+'" class="mono">'+esc(p.product_no)+'</a> · ':''}${esc([j.metal, j.colour].filter(Boolean).join(' '))}${j.ring_size?' · size '+esc(j.ring_size):''}${j.quantity>1?' · ×'+j.quantity:''}${j.due_date?' · due '+fmtDate(j.due_date):''}</div>
+      <div class="meta">${esc(how)}</div></div>
+      <span class="row">${j.priority==='rush'?'<span class="pill rush">Rush</span>':''}<span class="pill ${j.status==='completed'?'ok':'go'}">${j.status==='completed'?'Completed'+(j.final_destination?' · '+(j.final_destination==='safe'?'in safe':'dispatched'):''):j.status==='active'?'At '+esc(label(j.current_stage)):esc(j.status.replace('_',' '))}</span></span></div>
+      ${ME.supervisor ? trackHtml(stages, j.current_stage) : ''}
+      ${j.notes?'<p class="hint" style="margin:10px 0 0;">'+esc(j.notes)+'</p>':''}
+      ${ME.supervisor ? `<div class="row" style="margin-top:12px;"><button class="btn small" type="button" id="jb-edit">Change how it's made</button>${j.status==='active'?'<button class="btn small" type="button" data-st="on_hold">Put on hold</button>':''}${j.status==='on_hold'?'<button class="btn small" type="button" data-st="active">Resume</button>':''}${['active','on_hold'].includes(j.status)?'<button class="btn ghost small" type="button" data-st="cancelled">Cancel job</button>':''}</div>`:''}
+    </div>`;
+    if (!ME.supervisor) html += `<p class="hint">Showing your stage${stages.length>1?'s':''} on this job.</p>`;
+    html += '<div class="stages">' + stages.filter(s=>s.status!=='skipped').map(s=>stageHtml(j, s, props)).join('') + '</div>';
+    app.innerHTML = html;
+    if (ME.supervisor){
+      $('jb-edit').addEventListener('click', ()=>editRouting(j));
+      app.querySelectorAll('[data-st]').forEach(b=>b.addEventListener('click', async()=>{
+        if (b.dataset.st==='cancelled' && !confirm('Cancel job '+j.job_no+'?')) return;
+        try { await api('PATCH', `jobs?id=eq.${j.id}`, { status:b.dataset.st }); toast('Updated.'); route(); } catch(e){ toast(e.message, true); }
+      }));
+    }
+    stages.forEach(s => wireStage(j, s));
+  }
+
+  function editRouting(j){
+    const box = document.createElement('div'); box.className='card';
+    box.innerHTML = `<h2>Change how it's made</h2><p class="hint">Stages already started or finished stay as they are.</p>
+      <label class="check"><input type="checkbox" id="er-design" ${j.needs_design?'checked':''}> Needs a design stage</label>
+      <label class="check"><input type="checkbox" id="er-print" ${j.resin_print?'checked':''}> Resin print</label>
+      <div class="field"><label>Made by</label><select id="er-route"><option value="in_house" ${j.route==='in_house'?'selected':''}>In-house</option><option value="pmt" ${j.route==='pmt'?'selected':''}>PMT outsource</option></select></div>
+      <div class="field" style="margin-top:8px;"><label>In-house method</label><select id="er-method"><option value="cast" ${j.method==='cast'?'selected':''}>Casting</option><option value="handmade" ${j.method==='handmade'?'selected':''}>Handmade</option></select></div>
+      <label class="check"><input type="checkbox" id="er-plating" ${j.needs_plating?'checked':''}> Needs plating</label>
+      <div class="row"><button class="btn primary" type="button" id="er-save">Save</button><button class="btn ghost" type="button" id="er-cancel">Cancel</button></div>`;
+    app.insertBefore(box, app.children[1]);
+    $('er-cancel').addEventListener('click', ()=>box.remove());
+    $('er-save').addEventListener('click', async()=>{
+      const r = $('er-route').value;
+      try { await api('PATCH', `jobs?id=eq.${j.id}`, { needs_design:$('er-design').checked, resin_print:$('er-print').checked, route:r, method: r==='pmt'?null:$('er-method').value, needs_plating:$('er-plating').checked });
+        toast('Stages updated.'); route(); } catch(e){ toast(e.message, true); }
+    });
+  }
+
+  function stageHtml(j, s, props){
+    const t = TPL[s.stage] || {}, d = s.details || {};
+    const pillCls = s.status==='done'?'ok':s.status==='in_progress'?'go':'wait';
+    const pillTxt = s.status==='done' ? 'Done'+(s.completed_by_name?' · '+s.completed_by_name:'')+(s.completed_at?' · '+fmtDate(s.completed_at):'') : s.status==='in_progress' ? 'Busy' : (j.current_stage===s.stage ? 'Ready' : 'Waiting');
+    const isOpen = s.status==='in_progress' || (s.status==='waiting' && j.current_stage===s.stage);
+    const dis = s.status==='done' ? 'disabled' : '';
+    let extra = '';
+    if (s.stage==='design'){
+      const p = j.products;
+      extra = p ? `<div class="sub"><div class="spread"><div><div class="meta">Product number</div><div class="mono" style="font-size:18px;font-weight:600;">${esc(p.product_no)}</div><div>${esc(p.name)}</div></div><a class="btn small" href="#/product/${p.id}">Open product &amp; properties</a></div></div>`
+        : `<div class="sub" id="cp-${s.id}"><div class="meta">No product yet. Creating it gives the design its permanent product number.</div>
+            <div class="grid g3"><div class="field"><label>Product name</label><input type="text" id="cp-name-${s.id}" value="${esc(j.title)}"></div>
+            <div class="field"><label>Type</label><select id="cp-type-${s.id}">${['ring','pendant','earrings','bracelet','necklace','brooch','cufflinks','other'].map(x=>`<option value="${x}">${x[0].toUpperCase()+x.slice(1)}</option>`).join('')}</select></div>
+            <div class="field"><label>Design kind</label><select id="cp-kind-${s.id}"><option value="custom">Custom for a client</option><option value="catalogue">Catalogue / shop</option><option value="trade_exclusive">Trade exclusive</option><option value="academy">Academy</option></select></div></div>
+            <div class="field"><label>Designer</label><input type="text" id="cp-designer-${s.id}" value="${esc(ME.name||'')}"></div>
+            <div><button class="btn primary small" type="button" id="cp-go-${s.id}">Create product number</button></div></div>`;
+    }
+    if (s.stage==='printing'){
+      extra = `<div class="sub"><div class="spread"><div class="meta">Chitubox prop sheets for this job</div><button class="btn small" type="button" id="pp-add-${s.id}" ${j.product_id?'':'disabled'}>+ Add prop sheet</button></div>
+        ${j.product_id?'':'<div class="meta">The Design stage must create the product number first.</div>'}
+        ${props.length ? '<table class="t"><thead><tr><th>Resin</th><th>Volume</th><th>Time</th><th>Layers</th><th>Sheet</th></tr></thead><tbody>'+props.map(x=>`<tr><td>${esc(x.resin_type||'')}${x.resin_cost!=null?'<div class="meta">'+fmtR(x.resin_cost)+'</div>':''}</td><td class="mono">${x.resin_volume_ml!=null?x.resin_volume_ml+' mL':''}${x.resin_weight_g!=null?'<div class="meta">'+x.resin_weight_g+' g</div>':''}</td><td class="mono">${x.print_time_min!=null?Math.floor(x.print_time_min/60)+'h '+(x.print_time_min%60)+'m':''}</td><td class="mono">${x.layers??''}${x.layer_height_mm!=null?'<div class="meta">'+x.layer_height_mm+' mm</div>':''}</td><td>${docBtn(x.props_sheet_path,'View')}</td></tr>`).join('')+'</tbody></table>' : '<div class="meta">None recorded yet.</div>'}
+        <div id="pp-form-${s.id}" class="hidden grid">
+          <div class="grid g3"><div class="field"><label>Resin type</label><input type="text" id="pp-resin-${s.id}" placeholder="e.g. Castable"></div>
+            <div class="field"><label>Layer height (mm)</label><input type="number" step="0.001" id="pp-lh-${s.id}"></div>
+            <div class="field"><label>Layers</label><input type="number" id="pp-layers-${s.id}"></div>
+            <div class="field"><label>Print time (minutes)</label><input type="number" id="pp-time-${s.id}"></div>
+            <div class="field"><label>Resin volume (mL)</label><input type="number" step="0.01" id="pp-ml-${s.id}"></div>
+            <div class="field"><label>Resin weight (g)</label><input type="number" step="0.01" id="pp-g-${s.id}"></div>
+            <div class="field"><label>Resin cost (R)</label><input type="number" step="0.01" id="pp-cost-${s.id}"></div>
+            <div class="field"><label>Models on the plate</label><input type="number" id="pp-models-${s.id}"></div>
+            <div class="field"><label>Prop sheet (photo / PDF)</label><input type="file" id="pp-file-${s.id}" accept="image/*,application/pdf"></div></div>
+          <div class="field"><label>Notes</label><input type="text" id="pp-notes-${s.id}"></div>
+          <div><button class="btn primary small" type="button" id="pp-save-${s.id}">Save prop sheet</button></div></div></div>`;
+    }
+    if (s.stage==='pmt'){
+      const sv = d.services || [];
+      extra = `<div class="sub"><div class="meta">What PMT is doing</div><div class="row">${['Print','Cast','Basic finish','Full finish','Setting','Plating','Engraving'].map(x=>`<label class="check" style="padding:2px 8px 2px 0;"><input type="checkbox" data-svc="${x}" ${sv.includes(x)?'checked':''} ${dis}> ${x}</label>`).join('')}</div>
+        <div class="grid g3"><div class="field"><label>Sent on</label><input type="date" data-d="sent_on" value="${esc(d.sent_on||'')}" ${dis}></div><div class="field"><label>Expected back</label><input type="date" data-d="expected_back" value="${esc(d.expected_back||'')}" ${dis}></div><div class="field"><label>Received back</label><input type="date" data-d="received_on" value="${esc(d.received_on||'')}" ${dis}></div>
+        <div class="field"><label>PMT invoice no.</label><input type="text" data-d="invoice_no" value="${esc(d.invoice_no||'')}" ${dis}></div></div></div>`;
+    }
+    if (s.stage==='plating'){
+      extra = `<div class="field"><label>Plating</label><select data-d="plating" ${dis}>${['','Rhodium','Yellow gold','Rose gold','Silver'].map(x=>`<option ${d.plating===x?'selected':''} value="${x}">${x||'—'}</option>`).join('')}</select></div>`;
+    }
+    if (s.stage==='dispatch_safe'){
+      extra = `<div class="sub"><div class="seg"><label><input type="radio" name="dest-${s.id}" value="dispatch" ${d.destination==='dispatch'?'checked':''} ${dis}><span>Dispatched / collected</span></label><label><input type="radio" name="dest-${s.id}" value="safe" ${d.destination==='safe'?'checked':''} ${dis}><span>Filed in safe</span></label></div>
+        <div class="grid g3" id="dd-${s.id}"><div class="field"><label>How</label><select data-d="method" ${dis}>${['','Collected','PostNet','The Courier Guy'].map(x=>`<option ${d.method===x?'selected':''} value="${x}">${x||'—'}</option>`).join('')}</select></div>
+          <div class="field"><label>Tracking no.</label><input type="text" data-d="tracking_no" value="${esc(d.tracking_no||'')}" ${dis}></div><div class="field"><label>Date</label><input type="date" data-d="date" value="${esc(d.date||'')}" ${dis}></div></div>
+        <div class="field" id="ds-${s.id}"><label>Safe location</label><input type="text" data-d="location" value="${esc(d.location||'')}" placeholder="e.g. Safe, drawer 2" ${dis}></div></div>`;
+    }
+    const wIn = t.weight_in_label ? `<div class="field"><label>${esc(t.weight_in_label)}</label><input type="number" step="0.01" min="0" data-w="weight_in_g" value="${s.weight_in_g??''}" ${dis}></div>` : '';
+    const wOut = t.weight_out_label ? `<div class="field"><label>${esc(t.weight_out_label)}</label><input type="number" step="0.01" min="0" data-w="weight_out_g" value="${s.weight_out_g??''}" ${dis}></div>` : '';
+    let weights = '';
+    if (t.tracks_scrap){
+      const bagDefault = s.scrap_bag_label || (j.job_no+' '+label(s.stage)+' scrap');
+      weights = `<div class="sub"><div class="meta">Metal accounting: every gram in must be the piece, recovered scrap, or loss.</div>
+        <div class="grid g2">${wIn}${wOut}</div>
+        <div class="grid g2"><div class="field"><label>${s.stage==='casting'?'Sprue / button and offcuts (g)':'Offcuts (g)'}</label><input type="number" step="0.01" min="0" data-w="offcuts_g" value="${s.offcuts_g??''}" ${dis}></div>
+          <div class="field"><label>${s.stage==='finishing'?'Filings and polishing dust (g)':'Saw dust and filings (g)'}</label><input type="number" step="0.01" min="0" data-w="dust_g" value="${s.dust_g??''}" ${dis}></div></div>
+        <div class="grid g2"><label class="check"><input type="checkbox" data-bag ${s.scrap_bagged?'checked':''} ${dis}> Scrap bagged</label>
+          <div class="field"><label>Bag label</label><input type="text" data-baglabel value="${esc(bagDefault)}" ${dis}></div></div>
+        <div class="kv" id="loss-${s.id}"></div></div>`;
+    } else if (wIn || wOut) {
+      weights = `<div class="grid g2">${wIn}${wOut}</div>`;
+    }
+    const checklist = (s.checklist||[]).map((c,i)=>`<label class="check"><input type="checkbox" data-c="${i}" ${c.done?'checked':''} ${dis}> ${esc(c.item)}</label>`).join('');
+    const buttons = s.status==='done'
+      ? `<button class="btn small" type="button" data-act="reopen">Reopen</button>`
+      : `${s.status==='waiting'?'<button class="btn small" type="button" data-act="start">Start</button>':''}<button class="btn small" type="button" data-act="save">Save</button><button class="btn good" type="button" data-act="done">Mark ${esc(label(s.stage))} done</button>`;
+    return `<details class="stage" id="st-${s.id}" ${isOpen?'open':''}><summary><span><strong>${esc(label(s.stage))}</strong></span><span class="pill ${pillCls}">${esc(pillTxt)}</span></summary>
+      <div class="body">${extra}${checklist?'<div>'+checklist+'</div>':''}${weights}
+        <div class="grid g2"><div class="field"><label>Time spent (minutes)</label><input type="number" data-f="minutes_spent" value="${s.minutes_spent??''}" ${dis}></div>
+        <div class="field"><label>Photo</label>${s.status==='done'?'':`<input type="file" accept="image/*" capture="environment" data-photo ${dis}>`}<span class="note">${s.photo_path?docBtn(s.photo_path,'View saved photo'):''}</span></div></div>
+        <div class="field"><label>Notes</label><textarea data-f="notes" ${dis}>${esc(s.notes||'')}</textarea></div>
+        <div class="row">${buttons}</div></div></details>`;
+  }
+
+  function wireStage(j, s){
+    const el = $('st-'+s.id); if (!el) return;
+    const q = sel => el.querySelector(sel), qa = sel => [...el.querySelectorAll(sel)];
+    const lossUpd = () => {
+      const o = $('loss-'+s.id); if (!o) return;
+      const v = k => { const i = q(`[data-w=${k}]`); return i ? nOrNull(i.value) : null; };
+      const a = v('weight_in_g'), b = v('weight_out_g'), off = v('offcuts_g')||0, dust = v('dust_g')||0;
+      if (a==null || b==null){ o.innerHTML = '<dt>Unaccounted loss</dt><dd class="mono">fill in both weights</dd>'; return; }
+      const lost = a - b - off - dust, pct = a > 0 ? lost/a*100 : 0;
+      o.innerHTML = `<dt>Recovered scrap</dt><dd class="mono">${(off+dust).toFixed(2)} g</dd><dt>Unaccounted loss</dt><dd class="mono" style="color:${lost < -0.005 ? 'var(--warn)' : pct > 5 ? 'var(--danger)' : 'var(--good)'};">${lost.toFixed(2)} g (${pct.toFixed(1)}%)${lost < -0.005 ? ' — more out than in, please re-weigh' : ''}</dd>`;
+    };
+    qa('[data-w]').forEach(i=>i.addEventListener('input', lossUpd)); lossUpd();
+    if (s.stage==='dispatch_safe'){
+      const sync = () => { const v=(el.querySelector(`input[name="dest-${s.id}"]:checked`)||{}).value; $('dd-'+s.id).classList.toggle('hidden', v!=='dispatch'); $('ds-'+s.id).classList.toggle('hidden', v!=='safe'); };
+      qa(`input[name="dest-${s.id}"]`).forEach(r=>r.addEventListener('change', sync)); sync();
+    }
+    const collect = async () => {
+      const body = {
+        checklist: (s.checklist||[]).map((c,i)=>({ item:c.item, done: !!(q(`[data-c="${i}"]`)||{}).checked })),
+        minutes_spent: nOrNull((q('[data-f=minutes_spent]')||{}).value), notes: sOrNull((q('[data-f=notes]')||{}).value) };
+      qa('[data-w]').forEach(i=>body[i.dataset.w] = nOrNull(i.value));
+      if (q('[data-bag]')){ body.scrap_bagged = q('[data-bag]').checked; body.scrap_bag_label = sOrNull(q('[data-baglabel]').value); }
+      const d = Object.assign({}, s.details||{});
+      qa('[data-d]').forEach(i=>d[i.dataset.d] = sOrNull(i.value));
+      if (s.stage==='pmt') d.services = qa('[data-svc]').filter(c=>c.checked).map(c=>c.dataset.svc);
+      if (s.stage==='dispatch_safe') d.destination = (el.querySelector(`input[name="dest-${s.id}"]:checked`)||{}).value || null;
+      body.details = d;
+      const f = q('[data-photo]'); if (f && f.files[0]) body.photo_path = await upload(f.files[0], j.job_no+'/'+s.stage);
+      return body;
+    };
+    const act = async (kind, btn) => {
+      btn.disabled = true;
+      try {
+        let body = {};
+        if (kind==='reopen'){ if (!confirm('Reopen '+label(s.stage)+'?')) { btn.disabled=false; return; } body = { status:'in_progress' }; }
+        else {
+          body = await collect();
+          if (kind==='start') body.status = 'in_progress';
+          if (kind==='done'){
+            const open = body.checklist.filter(c=>!c.done).map(c=>c.item);
+            if (open.length && !confirm('Not ticked yet:\n• '+open.join('\n• ')+'\n\nMark the stage done anyway?')){ btn.disabled=false; return; }
+            body.status = 'done';
+          }
+        }
+        await api('PATCH', `job_stages?id=eq.${s.id}`, body);
+        toast(kind==='done' ? label(s.stage)+' done.' : kind==='start' ? 'Started.' : kind==='reopen' ? 'Reopened.' : 'Saved.');
+        route();
+      } catch(e){ toast(e.message, true); btn.disabled = false; }
+    };
+    qa('[data-act]').forEach(b=>b.addEventListener('click', ()=>act(b.dataset.act, b)));
+    // design: create product
+    const go = $('cp-go-'+s.id);
+    if (go) go.addEventListener('click', async()=>{
+      go.disabled = true;
+      try { const r = await rpc('create_product_for_job', { p_job:j.id, p:{ name:$('cp-name-'+s.id).value, product_type:$('cp-type-'+s.id).value, design_kind:$('cp-kind-'+s.id).value, designer:$('cp-designer-'+s.id).value } });
+        toast('Product number '+r.product_no+' created.'); route(); }
+      catch(e){ toast(e.message, true); go.disabled = false; }
+    });
+    // printing: prop sheets
+    const add = $('pp-add-'+s.id);
+    if (add) add.addEventListener('click', ()=>$('pp-form-'+s.id).classList.toggle('hidden'));
+    const ps = $('pp-save-'+s.id);
+    if (ps) ps.addEventListener('click', async()=>{
+      ps.disabled = true;
+      try {
+        const path = await upload($('pp-file-'+s.id).files[0], (j.products?j.products.product_no:j.job_no)+'/prop-sheet');
+        await api('POST', 'print_props', { product_id:j.product_id, job_id:j.id, resin_type:sOrNull($('pp-resin-'+s.id).value), layer_height_mm:nOrNull($('pp-lh-'+s.id).value),
+          layers:nOrNull($('pp-layers-'+s.id).value), print_time_min:nOrNull($('pp-time-'+s.id).value), resin_volume_ml:nOrNull($('pp-ml-'+s.id).value),
+          resin_weight_g:nOrNull($('pp-g-'+s.id).value), resin_cost:nOrNull($('pp-cost-'+s.id).value), models_on_plate:nOrNull($('pp-models-'+s.id).value),
+          props_sheet_path:path, notes:sOrNull($('pp-notes-'+s.id).value) });
+        toast('Prop sheet saved.'); route();
+      } catch(e){ toast(e.message, true); ps.disabled = false; }
+    });
+  }
+
+  // ---------- Products ----------
+  async function pageProducts(){
+    app.innerHTML = `<div class="spread"><h2 style="margin:4px 0;">Products</h2></div><p class="hint">Every design gets a product number in the Design stage. It stays with the design every time it's made.</p>
+      <div class="field"><input type="text" id="ps" placeholder="Search by product number or name"></div><div class="list" id="pl" style="margin-top:12px;"></div>`;
+    const load = async () => {
+      const q = $('ps').value.replace(/[,()*%]/g,' ').trim(); const e = encodeURIComponent('*'+q+'*');
+      const rows = await api('GET', 'products?select=id,product_no,name,product_type,design_kind,status&order=created_at.desc&limit=100' + (q ? `&or=(product_no.ilike.${e},name.ilike.${e})` : ''));
+      $('pl').innerHTML = rows.length ? rows.map(p=>`<a class="item" href="#/product/${p.id}"><span><span class="t"><span class="mono">${esc(p.product_no)}</span> ${esc(p.name)}</span><div class="meta">${esc(p.product_type)} · ${esc(p.design_kind.replace('_',' '))}</div></span><span class="pill ${p.status==='approved'?'ok':'wait'}">${esc(p.status)}</span></a>`).join('') : '<div class="empty">No products yet. They are created in the Design stage of a job.</div>';
+    };
+    let t; $('ps').addEventListener('input', ()=>{ clearTimeout(t); t = setTimeout(load, 300); }); await load();
+  }
+  async function pageProduct(id){
+    const [rows, props, jobs] = await Promise.all([
+      api('GET', `products?id=eq.${id}&select=*`), api('GET', `print_props?product_id=eq.${id}&order=created_at.desc`),
+      api('GET', `jobs?product_id=eq.${id}&select=id,job_no,title,status,current_stage,metal,created_at&order=created_at.desc`) ]);
+    const p = rows[0]; if (!p){ app.innerHTML = '<div class="card">Product not found.</div>'; return; }
+    const canEdit = (ME.stages||[]).includes('design') || ME.supervisor;
+    const ro = canEdit ? '' : 'disabled';
+    const f = (k, lbl, type='text', step='') => `<div class="field"><label>${lbl}</label><input type="${type}" ${step?'step="'+step+'"':''} data-k="${k}" value="${esc(p[k]??'')}" ${ro}></div>`;
+    app.innerHTML = `<div class="card"><div class="meta">Product number</div><div class="spread"><h2 style="font-size:24px;" class="mono">${esc(p.product_no)}</h2><span class="pill ${p.status==='approved'?'ok':'wait'}">${esc(p.status)}</span></div>
+      <div class="grid g3" style="margin-top:10px;">${f('name','Name')}
+        <div class="field"><label>Type</label><select data-k="product_type" ${ro}>${['ring','pendant','earrings','bracelet','necklace','brooch','cufflinks','other'].map(x=>`<option ${p.product_type===x?'selected':''} value="${x}">${x[0].toUpperCase()+x.slice(1)}</option>`).join('')}</select></div>
+        <div class="field"><label>Status</label><select data-k="status" ${ro}>${['draft','approved','archived'].map(x=>`<option ${p.status===x?'selected':''}>${x}</option>`).join('')}</select></div>
+        ${f('designer','Designer')}
+        <div class="field"><label>Design kind</label><select data-k="design_kind" ${ro}>${[['custom','Custom for a client'],['catalogue','Catalogue / shop'],['trade_exclusive','Trade exclusive'],['academy','Academy']].map(([v,t])=>`<option value="${v}" ${p.design_kind===v?'selected':''}>${t}</option>`).join('')}</select></div></div>
+      <div class="field" style="margin-top:12px;"><label>Description</label><textarea data-k="description" ${ro}>${esc(p.description||'')}</textarea></div></div>
+    <div class="card"><h2>Blender / Jewelcraft properties</h2><p class="hint">From the property sheet Blender / Jewelcraft creates for this design.</p>
+      <div class="grid g3">${f('dimensions_mm','Dimensions (mm)')}${f('volume_mm3','Volume (mm³)','number','0.01')}${f('surface_area_mm2','Surface area (mm²)','number','0.01')}</div>
+      <div class="section-title" style="margin-top:12px;">Estimated metal weight</div>
+      <div class="grid g4">${f('est_weight_silver_g','Silver (g)','number','0.01')}${f('est_weight_9ct_g','9ct (g)','number','0.01')}${f('est_weight_14ct_g','14ct (g)','number','0.01')}${f('est_weight_18ct_g','18ct (g)','number','0.01')}${f('est_weight_platinum_g','Platinum (g)','number','0.01')}</div>
+      <div class="field" style="margin-top:12px;"><label>Gemstones (Jewelcraft gem report)</label><textarea data-k="gem_list" placeholder="e.g. 12 × round 1.5 mm; 1 × oval 7×5 mm" ${ro}>${esc(p.gem_list||'')}</textarea></div>
+      <div class="grid g2" style="margin-top:12px;">${f('blender_file','Where the .blend file is kept')}${f('stl_file','Where the STL is kept')}</div>
+      <div class="grid g2" style="margin-top:12px;">
+        <div class="field"><label>Property sheet (photo / PDF)</label>${canEdit?'<input type="file" id="pr-props" accept="image/*,application/pdf">':''}<span class="note">${docBtn(p.props_sheet_path,'View saved sheet')}</span></div>
+        <div class="field"><label>Render</label>${canEdit?'<input type="file" id="pr-render" accept="image/*">':''}<span class="note">${docBtn(p.render_path,'View saved render')}</span></div></div>
+      ${canEdit?'<div class="row" style="margin-top:14px;"><button class="btn primary" type="button" id="pr-save">Save product</button></div>':''}</div>
+    <div class="card"><h2>Chitubox prop sheets</h2>${props.length ? '<table class="t"><thead><tr><th>Date</th><th>Resin</th><th>Volume</th><th>Time</th><th>Sheet</th></tr></thead><tbody>'+props.map(x=>`<tr><td>${fmtDate(x.created_at)}</td><td>${esc(x.resin_type||'')}</td><td class="mono">${x.resin_volume_ml!=null?x.resin_volume_ml+' mL':''}</td><td class="mono">${x.print_time_min!=null?Math.floor(x.print_time_min/60)+'h '+(x.print_time_min%60)+'m':''}</td><td>${docBtn(x.props_sheet_path,'View')}</td></tr>`).join('')+'</tbody></table>' : '<p class="hint">None yet. They are added in the 3D Printing stage.</p>'}</div>
+    <div class="card"><h2>Made as</h2>${jobs.length ? '<div class="list">'+jobs.map(x=>`<a class="item" href="#/job/${x.id}"><span><span class="mono">${esc(x.job_no)}</span> ${esc(x.title)}<div class="meta">${esc(x.metal||'')} · ${fmtDate(x.created_at)}</div></span><span class="pill ${x.status==='completed'?'ok':'go'}">${x.status==='completed'?'Completed':esc(label(x.current_stage)||x.status)}</span></a>`).join('')+'</div>' : '<p class="hint">No jobs you can see.</p>'}</div>`;
+    if (canEdit) $('pr-save').addEventListener('click', async e=>{
+      const b = e.target; b.disabled = true;
+      try {
+        const body = {};
+        app.querySelectorAll('[data-k]').forEach(i=>{ const k=i.dataset.k; body[k] = i.type==='number' ? nOrNull(i.value) : (k==='name' ? i.value.trim() : sOrNull(i.value)); });
+        if (!body.name){ toast('The product needs a name.', true); b.disabled=false; return; }
+        const pf = $('pr-props').files[0], rf = $('pr-render').files[0];
+        if (pf) body.props_sheet_path = await upload(pf, p.product_no+'/property-sheet');
+        if (rf) body.render_path = await upload(rf, p.product_no+'/render');
+        await api('PATCH', `products?id=eq.${p.id}`, body);
+        toast('Product saved.'); route();
+      } catch(err){ toast(err.message, true); b.disabled = false; }
+    });
+  }
+
+  // ---------- Team (supervisor) ----------
+  async function pageTeam(){
+    const rows = await rpc('team_list');
+    const stageList = TEMPLATES.map(t=>t.stage);
+    app.innerHTML = `<h2 style="margin:4px 0 2px;">Team</h2><p class="hint">Give each person their stages. They only see and update jobs at those stages, never clients or money.</p>
+      <div class="card"><h2>Adding someone new</h2><ol class="hint" style="margin:0;padding-left:18px;"><li>In Supabase, go to Authentication → Users → Add user, and create their login with their email and a password.</li><li>Come back here, refresh, and tick their stages below.</li></ol></div>
+      ${rows.map((u,i)=>{
+        const owner = u.role==='owner';
+        return `<div class="card"><div class="spread"><div><strong>${esc(u.display_name||u.email)}</strong><div class="meta">${esc(u.email)}</div></div><span class="pill ${u.role?'ok':'wait'}">${esc(u.role||'no access')}</span></div>
+        ${owner ? '<p class="hint" style="margin-top:8px;">Owner: all stages, clients and money.</p>' : `
+        <div class="grid g2" style="margin-top:10px;"><div class="field"><label>Name</label><input type="text" id="tm-n-${i}" value="${esc(u.display_name||'')}"></div>
+          <div class="field"><label>Role</label><select id="tm-r-${i}"><option value="staff" ${u.role==='staff'?'selected':''}>Staff (own stages only)</option><option value="designer" ${u.role==='designer'?'selected':''}>Designer</option><option value="supervisor" ${u.role==='supervisor'?'selected':''}>Supervisor (everything)</option></select></div></div>
+        <div class="row" style="margin-top:8px;">${stageList.map(st=>`<label class="check" style="padding:4px 10px 4px 0;"><input type="checkbox" data-tm="${i}" value="${st}" ${(u.stages||[]).includes(st)?'checked':''}> ${esc(label(st))}</label>`).join('')}</div>
+        <div class="row" style="margin-top:8px;"><button class="btn primary small" type="button" data-save="${i}">Save</button></div>`}</div>`;
+      }).join('')}`;
+    app.querySelectorAll('[data-save]').forEach(b=>b.addEventListener('click', async()=>{
+      const i = b.dataset.save, u = rows[i];
+      const stages = [...app.querySelectorAll(`[data-tm="${i}"]:checked`)].map(c=>c.value);
+      b.disabled = true;
+      try { await rpc('team_set', { p_email:u.email, p_name:$('tm-n-'+i).value, p_role:$('tm-r-'+i).value, p_stages:stages }); toast('Saved '+(u.display_name||u.email)+'.'); route(); }
+      catch(e){ toast(e.message, true); b.disabled = false; }
+    }));
+  }
+
+  // ---------- start ----------
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if (S) boot(); else showLogin();
+})();
+</script>
+</body>
+</html>
