@@ -120,6 +120,17 @@
   table.t th{ text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); border-bottom:1px solid var(--border); padding:6px; }
   table.t td{ border-bottom:1px solid var(--border); padding:8px 6px; vertical-align:top; }
   .hidden{ display:none !important; }
+  main a:not(.btn):not(.item){ color:var(--accent2); }
+  .thumb{ width:54px; height:54px; border-radius:10px; object-fit:cover; background:var(--surface-2); border:1px solid var(--border); flex:none; display:inline-flex; align-items:center; justify-content:center; color:var(--muted); font-size:20px; }
+  .thumb.big{ width:132px; height:132px; font-size:34px; cursor:zoom-in; }
+  .thumb.none{ cursor:default; }
+  .with-thumb{ display:flex; gap:12px; align-items:center; min-width:0; }
+  .with-thumb > span:last-child{ min-width:0; }
+  .tabs-mini{ display:flex; gap:4px; margin-bottom:14px; border-bottom:1px solid var(--border); }
+  .tabs-mini button{ background:none; border:none; border-bottom:2px solid transparent; padding:8px 10px; font-weight:600; color:var(--muted); cursor:pointer; }
+  .tabs-mini button.on{ color:var(--accent); border-bottom-color:var(--accent); }
+  .pic-view{ position:fixed; inset:0; background:rgba(0,0,0,.82); display:flex; align-items:center; justify-content:center; z-index:60; padding:16px; cursor:zoom-out; }
+  .pic-view img{ max-width:100%; max-height:100%; border-radius:12px; }
 </style>
 </head>
 <body>
@@ -205,18 +216,117 @@
   };
   const docBtn = (path, label) => path ? `<button class="doc" type="button" onclick="openDoc('${esc(path)}')">${esc(label)}</button>` : '';
 
+  // ---------- design pictures (thumbnails) ----------
+  const SIGNED = {};
+  async function signPaths(paths){
+    const need = [...new Set(paths.filter(p => p && !(SIGNED[p] && SIGNED[p].exp > Date.now())))];
+    if (!need.length) return;
+    try {
+      const r = await fetch(CRM.url+'/storage/v1/object/sign/'+BUCKET, { method:'POST', headers:{ apikey:CRM.key, Authorization:'Bearer '+(await token()), 'Content-Type':'application/json' }, body:JSON.stringify({ expiresIn:3600, paths:need }) });
+      const j = await r.json().catch(()=>null);
+      if (r.ok && Array.isArray(j)) j.forEach(x => { if (x && x.signedURL && !x.error) SIGNED[x.path] = { url: CRM.url+'/storage/v1'+x.signedURL, exp: Date.now()+55*60000 }; });
+    } catch(e){}
+  }
+  const picOf = j => (j && j.products && j.products.render_path) || (j && j.picture_path) || null;
+  function thumbHtml(path, big){
+    const s = SIGNED[path];
+    return s ? `<img class="thumb${big?' big':''}" src="${esc(s.url)}" alt="" loading="lazy" onerror="this.removeAttribute('data-zoom');this.style.visibility='hidden'" ${big?'data-zoom="'+esc(s.url)+'"':''}>`
+             : `<span class="thumb none${big?' big':''}" aria-hidden="true">◇</span>`;
+  }
+  document.addEventListener('click', e => {
+    const z = e.target.closest && e.target.closest('[data-zoom]'); if (!z) return;
+    const v = document.createElement('div'); v.className = 'pic-view'; v.innerHTML = `<img src="${esc(z.dataset.zoom)}" alt="Design picture">`;
+    v.addEventListener('click', ()=>v.remove()); document.body.appendChild(v);
+  });
+
   // ---------- login ----------
-  function showLogin(){
+  const APP_URL = location.origin + location.pathname;
+  const JOIN_STAGES = [['design','Design'],['printing','3D Printing'],['casting','Casting'],['handmade','Handmade'],['pmt','Sent to PMT'],['finishing','Finishing'],['engraving','Engraving'],['plating','Plating'],['packaging','Packaging'],['dispatch_safe','Dispatch / Safe']];
+  async function authCall(path, method, body, bearer){
+    let r;
+    try { r = await fetch(CRM.url+'/auth/v1/'+path, { method, headers:{ apikey:CRM.key, 'Content-Type':'application/json', ...(bearer?{Authorization:'Bearer '+bearer}:{}) }, body:JSON.stringify(body) }); }
+    catch(e){ throw new Error('Could not reach the CRM. Check your internet connection.'); }
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok){
+      const m = j.msg || j.error_description || j.message || ('Error '+r.status);
+      if (/already registered|already been registered|exists/i.test(m)) throw new Error('That email already has a login. Use Sign in, or Forgot password.');
+      if (/password/i.test(m) && /least|short|weak/i.test(m)) throw new Error('Please use a longer password (at least 8 characters).');
+      if (/rate limit|too many/i.test(m)) throw new Error('Too many tries. Please wait a few minutes and try again.');
+      throw new Error(m);
+    }
+    return j;
+  }
+  function showLogin(tab, note){
     $('top').style.display = 'none';
-    app.innerHTML = `<div class="card login"><h2 style="font-size:22px;margin-bottom:4px;">ISS CRM</h2><p class="hint">Sign in with the login the Owner set up for you.</p>
-      <form id="lf" class="grid"><div class="field"><label for="le">Email</label><input type="email" id="le" autocomplete="username" required></div>
+    tab = tab || 'in';
+    const tabs = `<div class="tabs-mini"><button type="button" data-lt="in" class="${tab==='in'?'on':''}">Sign in</button><button type="button" data-lt="reg" class="${tab==='reg'?'on':''}">Register</button><button type="button" data-lt="forgot" class="${tab==='forgot'?'on':''}">Forgot password</button></div>`;
+    let body = '';
+    if (tab==='in') body = `<form id="lf" class="grid"><div class="field"><label for="le">Email</label><input type="email" id="le" autocomplete="username" required></div>
       <div class="field"><label for="lp">Password</label><input type="password" id="lp" autocomplete="current-password" required></div>
-      <button class="btn primary" type="submit" id="lb">Sign in</button><p class="hint" id="lm" role="status"></p></form></div>`;
-    $('lf').addEventListener('submit', async e => {
-      e.preventDefault(); $('lb').disabled = true; $('lm').textContent = 'Signing in…';
+      <button class="btn primary" type="submit" id="lb">Sign in</button></form>
+      <p class="hint" style="margin-top:12px;">New to the team? Tap <strong>Register</strong> to create your login.</p>`;
+    if (tab==='reg') body = `<p class="hint">Create your login. The Owner approves you and gives you your stages before you can see jobs.</p>
+      <form id="rf" class="grid"><div class="field"><label for="rn">Full name</label><input type="text" id="rn" autocomplete="name" required></div>
+      <div class="field"><label for="re">Email</label><input type="email" id="re" autocomplete="email" required></div>
+      <div class="grid g2"><div class="field"><label for="rp">Password</label><input type="password" id="rp" autocomplete="new-password" minlength="8" required></div>
+        <div class="field"><label for="rp2">Password again</label><input type="password" id="rp2" autocomplete="new-password" minlength="8" required></div></div>
+      <div class="field"><label>I am joining as</label><div class="seg"><label><input type="radio" name="rr" value="designer"><span>Designer</span></label><label><input type="radio" name="rr" value="bench" checked><span>Bench / workshop</span></label><label><input type="radio" name="rr" value="other"><span>Other</span></label></div></div>
+      <div class="field"><label>What will you do? (tick all that apply)</label><div class="row">${JOIN_STAGES.map(([v,t])=>`<label class="check" style="padding:3px 10px 3px 0;"><input type="checkbox" name="rs" value="${v}"> ${t}</label>`).join('')}</div></div>
+      <button class="btn primary" type="submit" id="lb">Register</button></form>`;
+    if (tab==='forgot') body = `<p class="hint">We'll email you a link to set a new password.</p>
+      <form id="ff" class="grid"><div class="field"><label for="fe">Email</label><input type="email" id="fe" autocomplete="email" required></div>
+      <button class="btn primary" type="submit" id="lb">Send reset link</button></form>`;
+    if (tab==='newpw') body = `<p class="hint">Choose a new password.</p>
+      <form id="nf" class="grid"><div class="field"><label for="np">New password</label><input type="password" id="np" autocomplete="new-password" minlength="8" required></div>
+      <div class="field"><label for="np2">New password again</label><input type="password" id="np2" autocomplete="new-password" minlength="8" required></div>
+      <button class="btn primary" type="submit" id="lb">Save new password</button></form>`;
+    app.innerHTML = `<div class="card login"><h2 style="font-size:22px;margin-bottom:8px;">ISS CRM</h2>${tab==='newpw'?'':tabs}${body}<p class="hint" id="lm" role="status" style="margin-top:10px;">${esc(note||'')}</p></div>`;
+    app.querySelectorAll('[data-lt]').forEach(b=>b.addEventListener('click', ()=>showLogin(b.dataset.lt)));
+    const busy = (t) => { $('lb').disabled = !!t; if (t) $('lm').textContent = t; };
+    const fail = err => { $('lm').textContent = err.message; $('lb').disabled = false; };
+    if ($('lf')) $('lf').addEventListener('submit', async e => {
+      e.preventDefault(); busy('Signing in…');
       try { keep(await auth({ email:$('le').value.trim(), password:$('lp').value }, 'password')); await boot(); }
-      catch(err){ $('lm').textContent = err.message.indexOf('fetch')>=0 ? 'Could not reach the CRM. Check your internet connection.' : err.message; $('lb').disabled = false; }
+      catch(err){ fail(/fetch/.test(err.message) ? new Error('Could not reach the CRM. Check your internet connection.') : /not confirmed/i.test(err.message) ? new Error('Please confirm your email first: open the link we emailed you.') : err); }
     });
+    if ($('rf')) $('rf').addEventListener('submit', async e => {
+      e.preventDefault();
+      if ($('rp').value !== $('rp2').value){ $('lm').textContent = 'The two passwords don\'t match.'; return; }
+      const stages = [...app.querySelectorAll('input[name=rs]:checked')].map(c=>c.value);
+      const role = (app.querySelector('input[name=rr]:checked')||{}).value || 'other';
+      busy('Registering…');
+      try {
+        const j = await authCall('signup?redirect_to='+encodeURIComponent(APP_URL), 'POST', { email:$('re').value.trim(), password:$('rp').value,
+          data:{ full_name:$('rn').value.trim(), requested_role:role, requested_stages:stages } });
+        if (j.access_token){ keep({ access_token:j.access_token, refresh_token:j.refresh_token, expires_at:Date.now()+(j.expires_in||3600)*1000 }); await boot(); return; }
+        app.innerHTML = `<div class="card login"><h2>Almost there</h2><p>We sent a confirmation email to <strong>${esc($('re') ? $('re').value : '')}</strong>.</p>
+          <ol class="hint" style="padding-left:18px;"><li>Open the email and tap the confirm link.</li><li>The Owner approves you and ticks your stages.</li><li>Then sign in here.</li></ol><button class="btn" type="button" id="back">Back to sign in</button></div>`;
+        $('back').addEventListener('click', ()=>showLogin('in'));
+      } catch(err){ fail(err); }
+    });
+    if ($('ff')) $('ff').addEventListener('submit', async e => {
+      e.preventDefault(); busy('Sending…');
+      try { await authCall('recover?redirect_to='+encodeURIComponent(APP_URL), 'POST', { email:$('fe').value.trim() });
+        $('lm').textContent = 'If that email has a login, a reset link is on its way. Open it on this device.'; }
+      catch(err){ fail(err); }
+    });
+    if ($('nf')) $('nf').addEventListener('submit', async e => {
+      e.preventDefault();
+      if ($('np').value !== $('np2').value){ $('lm').textContent = 'The two passwords don\'t match.'; return; }
+      busy('Saving…');
+      try { await authCall('user', 'PUT', { password:$('np').value }, await token()); toast('New password saved.'); location.hash = '#/work'; await boot(); }
+      catch(err){ fail(err.message==='signin' ? new Error('The reset link has expired. Please ask for a new one.') : err); }
+    });
+  }
+  // Links from emails (confirm sign-up, reset password) come back with the session in the address
+  function readAuthLink(){
+    const h = location.hash.replace(/^#/, '');
+    if (!/access_token=|error=/.test(h)) return null;
+    const p = new URLSearchParams(h);
+    history.replaceState(null, '', location.pathname + location.search);
+    if (p.get('error')) return { error: (p.get('error_description')||'That link has expired.').replace(/\+/g,' ') + ' Please try again.' };
+    keep({ access_token:p.get('access_token'), refresh_token:p.get('refresh_token'), expires_at:Date.now()+(Number(p.get('expires_in'))||3600)*1000 });
+    return { type: p.get('type') || '' };
   }
   $('signOut').addEventListener('click', ()=>{
     const t = S && S.access_token; if (t) fetch(CRM.url+'/auth/v1/logout', { method:'POST', headers:{ apikey:CRM.key, Authorization:'Bearer '+t } }).catch(()=>{});
@@ -229,6 +339,7 @@
     const tabs = [['#/work','My work']];
     if (ME.supervisor) tabs.push(['#/board','All jobs'], ['#/new','+ New job']);
     tabs.push(['#/products','Products']);
+    tabs.push(['#/bench', ME.supervisor ? 'Tools & bench' : 'My bench']);
     tabs.push(['#/kpi', ME.supervisor ? 'Hours & KPIs' : 'My hours']);
     if (ME.supervisor) tabs.push(['#/team','Team']);
     const cur = location.hash.split('/').slice(0,2).join('/') || '#/work';
@@ -237,7 +348,7 @@
   async function boot(){
     try {
       ME = await rpc('my_access');
-      if (!ME || !ME.role){ app.innerHTML = `<div class="card login"><h2>No access yet</h2><p class="hint">You're signed in as ${esc(ME && ME.email)}, but the Owner hasn't given you any stages yet. Ask them to add you under Team.</p><button class="btn" onclick="location.reload()">Try again</button></div>`; $('top').style.display=''; $('whoName').textContent = ME && ME.email || ''; $('tabs').innerHTML=''; return; }
+      if (!ME || !ME.role){ app.innerHTML = `<div class="card login"><h2>Waiting for approval</h2><p class="hint">You're signed in as ${esc(ME && ME.email)}. The Owner still needs to approve you and give you your stages. You'll see your jobs and the clock-in button as soon as that's done.</p><button class="btn" onclick="location.reload()">Check again</button></div>`; $('top').style.display=''; $('whoName').textContent = ME && ME.email || ''; $('tabs').innerHTML=''; return; }
       TEMPLATES = await api('GET', 'stage_templates?select=*&order=sort_order');
       TPL = Object.fromEntries(TEMPLATES.map(t=>[t.stage,t]));
       $('top').style.display = '';
@@ -255,7 +366,7 @@
   function route(){
     nav();
     const [, page, id] = location.hash.split('/');
-    const go = { kpi:pageKpi, work:pageWork, board:pageBoard, new:pageNewJob, job:()=>pageJob(id), products:pageProducts, product:()=>pageProduct(id), team:pageTeam }[page || 'work'] || pageWork;
+    const go = { bench:pageBench, kpi:pageKpi, work:pageWork, board:pageBoard, new:pageNewJob, job:()=>pageJob(id), products:pageProducts, product:()=>pageProduct(id), team:pageTeam }[page || 'work'] || pageWork;
     if (['board','new','team'].includes(page) && !ME.supervisor) return pageWork();
     app.innerHTML = '<p class="hint">Loading…</p>';
     go().catch(e => { app.innerHTML = `<div class="card"><p>${esc(e.message)}</p></div>`; });
@@ -266,20 +377,21 @@
   }
   function jobLine(j, extra){
     const p = j.products;
-    return `<a class="item" href="#/job/${j.id}"><span><span class="t">${esc(j.title)}</span>
-      <div class="meta"><span class="mono">${esc(j.job_no)}</span>${p?' · Product <span class="mono">'+esc(p.product_no)+'</span>':''}${j.metal?' · '+esc(j.metal):''}${j.due_date?' · due '+fmtDate(j.due_date):''}</div>${extra||''}</span>
+    return `<a class="item" href="#/job/${j.id}"><span class="with-thumb">${thumbHtml(picOf(j))}<span><span class="t">${esc(j.title)}</span>
+      <div class="meta"><span class="mono">${esc(j.job_no)}</span>${p?' · Product <span class="mono">'+esc(p.product_no)+'</span>':''}${j.metal?' · '+esc(j.metal):''}${j.due_date?' · due '+fmtDate(j.due_date):''}</div>${extra||''}</span></span>
       <span class="row">${j.priority==='rush'?'<span class="pill rush">Rush</span>':''}${j.status==='on_hold'?'<span class="pill">On hold</span>':''}<span class="pill go">${esc(label(j.current_stage)||'Done')}</span></span></a>`;
   }
 
   // ---------- My work ----------
   async function pageWork(){
-    const rows = await api('GET', 'job_stages?select=id,stage,status,updated_at,jobs!inner(id,job_no,title,metal,due_date,priority,status,current_stage,products(product_no,name))&status=in.(waiting,in_progress)&jobs.status=in.(active,on_hold)&order=sort_order');
+    const rows = await api('GET', 'job_stages?select=id,stage,status,updated_at,jobs!inner(id,job_no,title,metal,due_date,priority,status,current_stage,picture_path,products(product_no,name,render_path))&status=in.(waiting,in_progress)&jobs.status=in.(active,on_hold)&order=sort_order');
+    await signPaths(rows.map(r=>picOf(r.jobs)));
     const now = rows.filter(r => r.status==='in_progress' || r.jobs.current_stage===r.stage);
     const later = rows.filter(r => !now.includes(r));
     const block = (title, list, empty) => `<div class="section-title">${title}</div>` + (list.length ? '<div class="list">'+list.map(r=>{
       const j = r.jobs;
-      return `<a class="item" href="#/job/${j.id}"><span><span class="t">${esc(j.title)}</span>
-        <div class="meta"><span class="mono">${esc(j.job_no)}</span>${j.products?' · <span class="mono">'+esc(j.products.product_no)+'</span>':''}${j.metal?' · '+esc(j.metal):''}${j.due_date?' · due '+fmtDate(j.due_date):''}</div></span>
+      return `<a class="item" href="#/job/${j.id}"><span class="with-thumb">${thumbHtml(picOf(j))}<span><span class="t">${esc(j.title)}</span>
+        <div class="meta"><span class="mono">${esc(j.job_no)}</span>${j.products?' · <span class="mono">'+esc(j.products.product_no)+'</span>':''}${j.metal?' · '+esc(j.metal):''}${j.due_date?' · due '+fmtDate(j.due_date):''}</div></span></span>
         <span class="row">${j.priority==='rush'?'<span class="pill rush">Rush</span>':''}<span class="pill ${r.status==='in_progress'?'go':'wait'}">${esc(label(r.stage))}${r.status==='in_progress'?' · busy':''}</span></span></a>`;
     }).join('')+'</div>' : `<div class="empty">${empty}</div>`);
     const clock = await rpc('my_clock').catch(()=>null);
@@ -305,6 +417,66 @@
       const note = prompt('Clocking out. Anything to note about today? (optional)', '');
       if (note === null) return;
       o.disabled=true; try{ await rpc('clock_out', { p_note: note }); toast('Clocked out.'); route(); }catch(e){ toast(e.message,true); o.disabled=false; } });
+  }
+
+
+  // ---------- Tools & bench materials ----------
+  const BSTATUS = { with_person:'With them', returned:'Returned', used_up:'Used up', broken:'Broken', lost:'Lost' };
+  async function pageBench(){
+    const team = ME.supervisor ? await rpc('team_list').catch(()=>[]) : [];
+    const people = team.filter(u=>u.role);
+    const nameOf = id => { const u = people.find(x=>x.user_id===id); return u ? (u.display_name||u.email) : (ME.name||ME.email); };
+    const showAll = sessionStorage.getItem('issBenchAll') === '1';
+    const rows = await api('GET', 'bench_items?select=*&order=status.asc,issued_on.desc' + (showAll ? '' : '&status=eq.with_person'));
+    const mine = !ME.supervisor;
+    const groups = ME.supervisor ? [...new Set(rows.map(r=>r.user_id))] : [null];
+    app.innerHTML = `<div class="spread"><h2 style="margin:4px 0 2px;">${mine?'My bench':'Tools & bench'}</h2></div>
+      <p class="hint">${mine?'Tools and polishing materials you have been given: saw frame, blades, buffs, files, burs and so on. Add what you receive; when something is returned, used up or breaks, update it here.':'What each person has been given. Add items for someone, and mark them returned, used up, broken or lost.'}</p>
+      <div class="card"><h2>Add item</h2>
+        <div class="grid g3">
+          ${ME.supervisor ? `<div class="field"><label>Given to</label><select id="bi-user">${people.map(u=>`<option value="${u.user_id}">${esc(u.display_name||u.email)}</option>`).join('')}</select></div>` : ''}
+          <div class="field"><label>Item</label><input type="text" id="bi-item" placeholder="e.g. Saw blades 2/0" list="bi-suggest"><datalist id="bi-suggest">${['Saw frame','Saw blades','Needle files','Hand file','Burs','Felt buff','Cotton buff','Polishing compound (Tripoli)','Polishing compound (rouge)','Sandpaper','Emery sticks','Pliers','Tweezers','Ring mandrel','Bench pin','Soldering pick','Solder'].map(x=>`<option value="${x}">`).join('')}</datalist></div>
+          <div class="field"><label>Type</label><select id="bi-type"><option value="tool">Tool (comes back)</option><option value="consumable">Material / consumable (gets used up)</option></select></div>
+          <div class="field"><label>Quantity</label><input type="number" id="bi-qty" value="1" min="0.01" step="0.01"></div>
+          <div class="field"><label>Unit</label><select id="bi-unit">${['pcs','dozen','pack','g','m'].map(x=>`<option>${x}</option>`).join('')}</select></div>
+          <div class="field"><label>Given on</label><input type="date" id="bi-date" value="${today()}"></div>
+          <div class="field"><label>Given by</label><input type="text" id="bi-by" value="${ME.supervisor?esc(ME.name||''):''}"></div>
+          <div class="field"><label>Condition</label><input type="text" id="bi-cond" placeholder="e.g. new"></div>
+        </div>
+        <div class="row" style="margin-top:12px;"><button class="btn primary" type="button" id="bi-add">Add</button></div></div>
+      <div class="row" style="margin:6px 0 4px;"><label class="check"><input type="checkbox" id="bi-all" ${showAll?'checked':''}> Also show returned, used-up, broken and lost items</label></div>
+      ${rows.length ? groups.map(g=>{
+        const list = ME.supervisor ? rows.filter(r=>r.user_id===g) : rows;
+        const tools = list.filter(r=>r.item_type==='tool'), cons = list.filter(r=>r.item_type==='consumable');
+        const table = (title, l) => l.length ? `<div class="section-title">${title}</div><table class="t"><thead><tr><th>Item</th><th>Qty</th><th>Given</th><th>Status</th><th></th></tr></thead><tbody>${l.map(r=>`<tr>
+          <td>${esc(r.item)}${r.condition_out?'<div class="meta">'+esc(r.condition_out)+'</div>':''}${r.notes?'<div class="meta">'+esc(r.notes)+'</div>':''}</td>
+          <td class="mono">${Number(r.quantity)} ${esc(r.unit)}</td>
+          <td>${fmtDate(r.issued_on)}${r.issued_by?'<div class="meta">by '+esc(r.issued_by)+'</div>':''}</td>
+          <td><span class="pill ${r.status==='with_person'?'go':r.status==='returned'||r.status==='used_up'?'ok':'rush'}">${BSTATUS[r.status]}</span>${r.closed_on?'<div class="meta">'+fmtDate(r.closed_on)+'</div>':''}</td>
+          <td style="white-space:nowrap;">${r.status==='with_person' ? `<select data-bs="${r.id}" class="btn small" style="min-height:34px;padding:4px 8px;"><option value="">Update…</option>${r.item_type==='tool'?'<option value="returned">Returned</option>':''}<option value="used_up">Used up</option><option value="broken">Broken</option><option value="lost">Lost</option></select>` : (ME.supervisor?`<button class="btn small" type="button" data-bs-undo="${r.id}">Undo</button>`:'')}</td></tr>`).join('')}</tbody></table>` : '';
+        return `<div class="card">${ME.supervisor?'<h2>'+esc(nameOf(g))+'</h2>':''}${table('Tools', tools)}${table('Polishing &amp; bench materials', cons)}</div>`;
+      }).join('') : `<div class="empty">${showAll?'Nothing recorded yet.':'Nothing out at the moment.'}</div>`}`;
+    $('bi-all').addEventListener('change', e=>{ try{ sessionStorage.setItem('issBenchAll', e.target.checked?'1':'0'); }catch(x){} route(); });
+    $('bi-type').addEventListener('change', ()=>{ if ($('bi-type').value==='consumable' && $('bi-unit').value==='pcs') $('bi-unit').value='pack'; });
+    $('bi-add').addEventListener('click', async e=>{
+      const item = $('bi-item').value.trim(); if (!item){ toast('What was given?', true); return; }
+      e.target.disabled = true;
+      try {
+        const body = { item, item_type:$('bi-type').value, quantity:nOrNull($('bi-qty').value)||1, unit:$('bi-unit').value, issued_on:$('bi-date').value||today(), issued_by:sOrNull($('bi-by').value), condition_out:sOrNull($('bi-cond').value) };
+        if (ME.supervisor) body.user_id = $('bi-user').value;
+        await api('POST', 'bench_items', body); toast('Added.'); route();
+      } catch(err){ toast(err.message, true); e.target.disabled = false; }
+    });
+    app.querySelectorAll('[data-bs]').forEach(sel=>sel.addEventListener('change', async()=>{
+      const st = sel.value; if (!st) return;
+      const note = st==='returned' ? prompt('Condition it came back in? (optional)', '') : prompt(BSTATUS[st]+'. Any note? (optional)', '');
+      if (note === null){ sel.value=''; return; }
+      const body = { status:st }; if (st==='returned') body.condition_back = sOrNull(note); else if (note.trim()) body.notes = note.trim();
+      try { await api('PATCH', `bench_items?id=eq.${sel.dataset.bs}`, body); toast('Updated.'); route(); } catch(e){ toast(e.message, true); sel.value=''; }
+    }));
+    app.querySelectorAll('[data-bs-undo]').forEach(b=>b.addEventListener('click', async()=>{
+      try { await api('PATCH', `bench_items?id=eq.${b.dataset.bsUndo}`, { status:'with_person' }); toast('Back with the person.'); route(); } catch(e){ toast(e.message, true); }
+    }));
   }
 
   // ---------- Hours & KPIs ----------
@@ -356,7 +528,8 @@
 
   // ---------- All jobs (supervisor) ----------
   async function pageBoard(){
-    const jobs = await api('GET', 'jobs?select=id,job_no,title,metal,due_date,priority,status,current_stage,order_no,products(product_no,name)&order=created_at.desc&limit=200');
+    const jobs = await api('GET', 'jobs?select=id,job_no,title,metal,due_date,priority,status,current_stage,order_no,picture_path,products(product_no,name,render_path)&order=created_at.desc&limit=200');
+    await signPaths(jobs.map(picOf));
     const open = jobs.filter(j=>['active','on_hold'].includes(j.status)), closed = jobs.filter(j=>!['active','on_hold'].includes(j.status));
     const byStage = TEMPLATES.map(t=>[t, open.filter(j=>j.current_stage===t.stage)]).filter(([,l])=>l.length);
     app.innerHTML = `<div class="spread"><h2 style="margin:4px 0;">All jobs</h2><a class="btn primary small" href="#/new">+ New job</a></div>`
@@ -383,12 +556,15 @@
           <div class="field"><label>Due date</label><input type="date" id="nj-due"></div>
         </div>
         <label class="check"><input type="checkbox" id="nj-rush"> Rush job</label>
+        <div class="field" style="margin-top:8px;"><label>Reference picture (optional)</label><input type="file" id="nj-pic" accept="image/*"><span class="note">A sketch or inspiration photo, so everyone recognises the job. The designer's picture replaces it once the design exists.</span></div>
       </div>
       <div class="card"><h2>How it's made</h2>
         <div class="field"><label>Resin print?</label><div class="seg"><label><input type="radio" name="nj-print" value="1" checked><span>Yes, 3D print</span></label><label><input type="radio" name="nj-print" value="0"><span>No print</span></label></div></div>
         <div class="field" style="margin-top:12px;"><label>Made by</label><div class="seg"><label><input type="radio" name="nj-route" value="in_house" checked><span>In-house</span></label><label><input type="radio" name="nj-route" value="pmt"><span>PMT outsource</span></label></div></div>
         <div class="field" id="nj-methodBox" style="margin-top:12px;"><label>In-house method</label><div class="seg"><label><input type="radio" name="nj-method" value="cast" checked><span>Casting</span></label><label><input type="radio" name="nj-method" value="handmade"><span>Handmade</span></label></div></div>
-        <label class="check" style="margin-top:8px;"><input type="checkbox" id="nj-plating"> Needs plating</label>
+        <label class="check" style="margin-top:8px;"><input type="checkbox" id="nj-engrave"> Needs engraving</label>
+        <div class="field hidden" id="nj-engBox"><label>What to engrave</label><input type="text" id="nj-engText" placeholder="e.g. A & J 12.12.2026, inside the band"></div>
+        <label class="check"><input type="checkbox" id="nj-plating"> Needs plating</label>
         <p class="hint" id="nj-flow" style="margin-top:8px;"></p>
       </div>
       <div class="card"><h2>Client order (optional)</h2>
@@ -404,7 +580,8 @@
       if (radio('nj-design')==='new') st.push('design');
       if (radio('nj-print')==='1') st.push('printing');
       st.push(radio('nj-route')==='pmt' ? 'pmt' : radio('nj-method')==='handmade' ? 'handmade' : 'casting');
-      st.push('finishing'); if ($('nj-plating').checked) st.push('plating'); st.push('packaging','dispatch_safe');
+      st.push('finishing'); if ($('nj-engrave').checked) st.push('engraving'); if ($('nj-plating').checked) st.push('plating'); st.push('packaging','dispatch_safe');
+      $('nj-engBox').classList.toggle('hidden', !$('nj-engrave').checked);
       $('nj-methodBox').classList.toggle('hidden', radio('nj-route')==='pmt');
       $('nj-prodBox').classList.toggle('hidden', radio('nj-design')!=='existing');
       $('nj-flow').textContent = 'Stages: ' + st.map(label).join(' → ');
@@ -432,7 +609,9 @@
       const route = radio('nj-route');
       $('nj-save').disabled = true;
       try {
+        const pic = $('nj-pic').files[0] ? await upload($('nj-pic').files[0], 'job-pictures') : null;
         const rows = await api('POST', 'jobs?select=id,job_no', {
+          picture_path: pic, needs_engraving: $('nj-engrave').checked, engraving_text: $('nj-engrave').checked ? sOrNull($('nj-engText').value) : null,
           title: $('nj-title').value.trim(), quantity: nOrNull($('nj-qty').value) || 1,
           product_id: existing ? $('nj-product').value : null, needs_design: !existing,
           metal: sOrNull($('nj-metal').value), colour: sOrNull($('nj-colour').value), ring_size: sOrNull($('nj-size').value),
@@ -456,10 +635,11 @@
     const j = jobs[0];
     if (!j){ app.innerHTML = '<div class="card"><p>This job isn\'t at any of your stages.</p><a class="btn" href="#/work">Back to my work</a></div>'; return; }
     const p = j.products;
-    const how = [j.resin_print?'3D print':'No print', j.route==='pmt'?'PMT outsource':(j.method==='handmade'?'In-house, handmade':'In-house, cast'), j.needs_plating?'plated':null].filter(Boolean).join(' · ');
-    let html = `<div class="card"><div class="spread"><div><div class="meta mono">${esc(j.job_no)}${j.order_no?' · Order '+esc(j.order_no):''}</div><h2 style="font-size:21px;margin:2px 0 4px;">${esc(j.title)}</h2>
+    await signPaths([picOf(j)]);
+    const how = [j.resin_print?'3D print':'No print', j.route==='pmt'?'PMT outsource':(j.method==='handmade'?'In-house, handmade':'In-house, cast'), j.needs_engraving?'engraved':null, j.needs_plating?'plated':null].filter(Boolean).join(' · ');
+    let html = `<div class="card"><div class="spread"><div class="with-thumb" style="align-items:flex-start;">${thumbHtml(picOf(j), true)}<div><div class="meta mono">${esc(j.job_no)}${j.order_no?' · Order '+esc(j.order_no):''}</div><h2 style="font-size:21px;margin:2px 0 4px;">${esc(j.title)}</h2>
       <div class="meta">${p?'Product <a href="#/product/'+p.id+'" class="mono">'+esc(p.product_no)+'</a> · ':''}${esc([j.metal, j.colour].filter(Boolean).join(' '))}${j.ring_size?' · size '+esc(j.ring_size):''}${j.quantity>1?' · ×'+j.quantity:''}${j.due_date?' · due '+fmtDate(j.due_date):''}</div>
-      <div class="meta">${esc(how)}</div></div>
+      <div class="meta">${esc(how)}</div>${j.needs_engraving&&j.engraving_text?'<div class="meta">Engrave: <strong>'+esc(j.engraving_text)+'</strong></div>':''}</div></div>
       <span class="row">${j.priority==='rush'?'<span class="pill rush">Rush</span>':''}<span class="pill ${j.status==='completed'?'ok':'go'}">${j.status==='completed'?'Completed'+(j.final_destination?' · '+(j.final_destination==='safe'?'in safe':'dispatched'):''):j.status==='active'?'At '+esc(label(j.current_stage)):esc(j.status.replace('_',' '))}</span></span></div>
       ${ME.supervisor ? trackHtml(stages, j.current_stage) : ''}
       ${j.notes?'<p class="hint" style="margin:10px 0 0;">'+esc(j.notes)+'</p>':''}
@@ -485,13 +665,20 @@
       <label class="check"><input type="checkbox" id="er-print" ${j.resin_print?'checked':''}> Resin print</label>
       <div class="field"><label>Made by</label><select id="er-route"><option value="in_house" ${j.route==='in_house'?'selected':''}>In-house</option><option value="pmt" ${j.route==='pmt'?'selected':''}>PMT outsource</option></select></div>
       <div class="field" style="margin-top:8px;"><label>In-house method</label><select id="er-method"><option value="cast" ${j.method==='cast'?'selected':''}>Casting</option><option value="handmade" ${j.method==='handmade'?'selected':''}>Handmade</option></select></div>
+      <label class="check"><input type="checkbox" id="er-engrave" ${j.needs_engraving?'checked':''}> Needs engraving</label>
+      <div class="field"><label>What to engrave</label><input type="text" id="er-engText" value="${esc(j.engraving_text||'')}"></div>
       <label class="check"><input type="checkbox" id="er-plating" ${j.needs_plating?'checked':''}> Needs plating</label>
+      <div class="field" style="margin-bottom:10px;"><label>Reference picture</label><input type="file" id="er-pic" accept="image/*"><span class="note">${j.picture_path?'Choosing a new one replaces the current picture.':'Optional.'}${j.products&&j.products.render_path?' The design picture from the product is shown first.':''}</span></div>
       <div class="row"><button class="btn primary" type="button" id="er-save">Save</button><button class="btn ghost" type="button" id="er-cancel">Cancel</button></div>`;
     app.insertBefore(box, app.children[1]);
     $('er-cancel').addEventListener('click', ()=>box.remove());
     $('er-save').addEventListener('click', async()=>{
       const r = $('er-route').value;
-      try { await api('PATCH', `jobs?id=eq.${j.id}`, { needs_design:$('er-design').checked, resin_print:$('er-print').checked, route:r, method: r==='pmt'?null:$('er-method').value, needs_plating:$('er-plating').checked });
+      try {
+        const body = { needs_design:$('er-design').checked, resin_print:$('er-print').checked, route:r, method: r==='pmt'?null:$('er-method').value, needs_plating:$('er-plating').checked,
+          needs_engraving:$('er-engrave').checked, engraving_text:sOrNull($('er-engText').value) };
+        if ($('er-pic').files[0]) body.picture_path = await upload($('er-pic').files[0], j.job_no+'/picture');
+        await api('PATCH', `jobs?id=eq.${j.id}`, body);
         toast('Stages updated.'); route(); } catch(e){ toast(e.message, true); }
     });
   }
@@ -505,7 +692,9 @@
     let extra = '';
     if (s.stage==='design'){
       const p = j.products;
-      extra = p ? `<div class="sub"><div class="spread"><div><div class="meta">Product number</div><div class="mono" style="font-size:18px;font-weight:600;">${esc(p.product_no)}</div><div>${esc(p.name)}</div></div><a class="btn small" href="#/product/${p.id}">Open product &amp; properties</a></div></div>`
+      extra = p ? `<div class="sub"><div class="spread"><div><div class="meta">Product number</div><div class="mono" style="font-size:18px;font-weight:600;">${esc(p.product_no)}</div><div>${esc(p.name)}</div></div><a class="btn small" href="#/product/${p.id}">Open product &amp; properties</a></div>
+          ${s.status==='done'?'':`<div class="field"><label>${p.render_path?'Replace the design picture':'Design picture (render or screenshot)'}</label><input type="file" accept="image/*" id="dp-file-${s.id}"><span class="note">Shown as the thumbnail on every job made from this design.</span></div>
+          <div><button class="btn small" type="button" id="dp-save-${s.id}">Upload picture</button></div>`}</div>`
         : `<div class="sub" id="cp-${s.id}"><div class="meta">No product yet. Creating it gives the design its permanent product number.</div>
             <div class="grid g3"><div class="field"><label>Product name</label><input type="text" id="cp-name-${s.id}" value="${esc(j.title)}"></div>
             <div class="field"><label>Type</label><select id="cp-type-${s.id}">${['ring','pendant','earrings','bracelet','necklace','brooch','cufflinks','other'].map(x=>`<option value="${x}">${x[0].toUpperCase()+x.slice(1)}</option>`).join('')}</select></div>
@@ -535,6 +724,12 @@
       extra = `<div class="sub"><div class="meta">What PMT is doing</div><div class="row">${['Print','Cast','Basic finish','Full finish','Setting','Plating','Engraving'].map(x=>`<label class="check" style="padding:2px 8px 2px 0;"><input type="checkbox" data-svc="${x}" ${sv.includes(x)?'checked':''} ${dis}> ${x}</label>`).join('')}</div>
         <div class="grid g3"><div class="field"><label>Sent on</label><input type="date" data-d="sent_on" value="${esc(d.sent_on||'')}" ${dis}></div><div class="field"><label>Expected back</label><input type="date" data-d="expected_back" value="${esc(d.expected_back||'')}" ${dis}></div><div class="field"><label>Received back</label><input type="date" data-d="received_on" value="${esc(d.received_on||'')}" ${dis}></div>
         <div class="field"><label>PMT invoice no.</label><input type="text" data-d="invoice_no" value="${esc(d.invoice_no||'')}" ${dis}></div></div></div>`;
+    }
+    if (s.stage==='engraving'){
+      extra = `<div class="sub"><div class="meta">What to engrave</div><div style="font-size:17px;font-weight:600;">${j.engraving_text?esc(j.engraving_text):'<span class="meta">Not written on the job. Check with the Owner.</span>'}</div>
+        <div class="grid g3"><div class="field"><label>Where on the piece</label><input type="text" data-d="position" value="${esc(d.position||'')}" placeholder="e.g. inside the band" ${dis}></div>
+          <div class="field"><label>Font</label><input type="text" data-d="font" value="${esc(d.font||'')}" ${dis}></div>
+          <div class="field"><label>Laser settings</label><input type="text" data-d="settings" value="${esc(d.settings||'')}" placeholder="power / speed / passes" ${dis}></div></div></div>`;
     }
     if (s.stage==='plating'){
       extra = `<div class="field"><label>Plating</label><select data-d="plating" ${dis}>${['','Rhodium','Yellow gold','Rose gold','Silver'].map(x=>`<option ${d.plating===x?'selected':''} value="${x}">${x||'—'}</option>`).join('')}</select></div>`;
@@ -630,6 +825,14 @@
         toast('Product number '+r.product_no+' created.'); route(); }
       catch(e){ toast(e.message, true); go.disabled = false; }
     });
+    // design: design picture
+    const dps = $('dp-save-'+s.id);
+    if (dps) dps.addEventListener('click', async()=>{
+      const f = $('dp-file-'+s.id).files[0]; if (!f){ toast('Choose a picture first.', true); return; }
+      dps.disabled = true;
+      try { const path = await upload(f, j.products.product_no+'/render'); await api('PATCH', `products?id=eq.${j.products.id}`, { render_path:path }); toast('Design picture saved.'); route(); }
+      catch(e){ toast(e.message, true); dps.disabled = false; }
+    });
     // printing: prop sheets
     const add = $('pp-add-'+s.id);
     if (add) add.addEventListener('click', ()=>$('pp-form-'+s.id).classList.toggle('hidden'));
@@ -653,8 +856,9 @@
       <div class="field"><input type="text" id="ps" placeholder="Search by product number or name"></div><div class="list" id="pl" style="margin-top:12px;"></div>`;
     const load = async () => {
       const q = $('ps').value.replace(/[,()*%]/g,' ').trim(); const e = encodeURIComponent('*'+q+'*');
-      const rows = await api('GET', 'products?select=id,product_no,name,product_type,design_kind,status&order=created_at.desc&limit=100' + (q ? `&or=(product_no.ilike.${e},name.ilike.${e})` : ''));
-      $('pl').innerHTML = rows.length ? rows.map(p=>`<a class="item" href="#/product/${p.id}"><span><span class="t"><span class="mono">${esc(p.product_no)}</span> ${esc(p.name)}</span><div class="meta">${esc(p.product_type)} · ${esc(p.design_kind.replace('_',' '))}</div></span><span class="pill ${p.status==='approved'?'ok':'wait'}">${esc(p.status)}</span></a>`).join('') : '<div class="empty">No products yet. They are created in the Design stage of a job.</div>';
+      const rows = await api('GET', 'products?select=id,product_no,name,product_type,design_kind,status,render_path&order=created_at.desc&limit=100' + (q ? `&or=(product_no.ilike.${e},name.ilike.${e})` : ''));
+      await signPaths(rows.map(p=>p.render_path));
+      $('pl').innerHTML = rows.length ? rows.map(p=>`<a class="item" href="#/product/${p.id}"><span class="with-thumb">${thumbHtml(p.render_path)}<span><span class="t"><span class="mono">${esc(p.product_no)}</span> ${esc(p.name)}</span><div class="meta">${esc(p.product_type)} · ${esc(p.design_kind.replace('_',' '))}</div></span></span><span class="pill ${p.status==='approved'?'ok':'wait'}">${esc(p.status)}</span></a>`).join('') : '<div class="empty">No products yet. They are created in the Design stage of a job.</div>';
     };
     let t; $('ps').addEventListener('input', ()=>{ clearTimeout(t); t = setTimeout(load, 300); }); await load();
   }
@@ -663,10 +867,11 @@
       api('GET', `products?id=eq.${id}&select=*`), api('GET', `print_props?product_id=eq.${id}&order=created_at.desc`),
       api('GET', `jobs?product_id=eq.${id}&select=id,job_no,title,status,current_stage,metal,created_at&order=created_at.desc`) ]);
     const p = rows[0]; if (!p){ app.innerHTML = '<div class="card">Product not found.</div>'; return; }
+    await signPaths([p.render_path]);
     const canEdit = (ME.stages||[]).includes('design') || ME.supervisor;
     const ro = canEdit ? '' : 'disabled';
     const f = (k, lbl, type='text', step='') => `<div class="field"><label>${lbl}</label><input type="${type}" ${step?'step="'+step+'"':''} data-k="${k}" value="${esc(p[k]??'')}" ${ro}></div>`;
-    app.innerHTML = `<div class="card"><div class="meta">Product number</div><div class="spread"><h2 style="font-size:24px;" class="mono">${esc(p.product_no)}</h2><span class="pill ${p.status==='approved'?'ok':'wait'}">${esc(p.status)}</span></div>
+    app.innerHTML = `<div class="card"><div class="spread"><div class="with-thumb">${thumbHtml(p.render_path, true)}<div><div class="meta">Product number</div><h2 style="font-size:24px;" class="mono">${esc(p.product_no)}</h2>${p.render_path?'<div class="meta">Tap the picture to enlarge</div>':''}</div></div><span class="pill ${p.status==='approved'?'ok':'wait'}">${esc(p.status)}</span></div>
       <div class="grid g3" style="margin-top:10px;">${f('name','Name')}
         <div class="field"><label>Type</label><select data-k="product_type" ${ro}>${['ring','pendant','earrings','bracelet','necklace','brooch','cufflinks','other'].map(x=>`<option ${p.product_type===x?'selected':''} value="${x}">${x[0].toUpperCase()+x.slice(1)}</option>`).join('')}</select></div>
         <div class="field"><label>Status</label><select data-k="status" ${ro}>${['draft','approved','archived'].map(x=>`<option ${p.status===x?'selected':''}>${x}</option>`).join('')}</select></div>
@@ -681,7 +886,7 @@
       <div class="grid g2" style="margin-top:12px;">${f('blender_file','Where the .blend file is kept')}${f('stl_file','Where the STL is kept')}</div>
       <div class="grid g2" style="margin-top:12px;">
         <div class="field"><label>Property sheet (photo / PDF)</label>${canEdit?'<input type="file" id="pr-props" accept="image/*,application/pdf">':''}<span class="note">${docBtn(p.props_sheet_path,'View saved sheet')}</span></div>
-        <div class="field"><label>Render</label>${canEdit?'<input type="file" id="pr-render" accept="image/*">':''}<span class="note">${docBtn(p.render_path,'View saved render')}</span></div></div>
+        <div class="field"><label>Design picture / render</label>${canEdit?'<input type="file" id="pr-render" accept="image/*">':''}<span class="note">Shown as the thumbnail on every job. ${docBtn(p.render_path,'Open full size')}</span></div></div>
       ${canEdit?'<div class="row" style="margin-top:14px;"><button class="btn primary" type="button" id="pr-save">Save product</button></div>':''}</div>
     <div class="card"><h2>Chitubox prop sheets</h2>${props.length ? '<table class="t"><thead><tr><th>Date</th><th>Resin</th><th>Volume</th><th>Time</th><th>Sheet</th></tr></thead><tbody>'+props.map(x=>`<tr><td>${fmtDate(x.created_at)}</td><td>${esc(x.resin_type||'')}</td><td class="mono">${x.resin_volume_ml!=null?x.resin_volume_ml+' mL':''}</td><td class="mono">${x.print_time_min!=null?Math.floor(x.print_time_min/60)+'h '+(x.print_time_min%60)+'m':''}</td><td>${docBtn(x.props_sheet_path,'View')}</td></tr>`).join('')+'</tbody></table>' : '<p class="hint">None yet. They are added in the 3D Printing stage.</p>'}</div>
     <div class="card"><h2>Made as</h2>${jobs.length ? '<div class="list">'+jobs.map(x=>`<a class="item" href="#/job/${x.id}"><span><span class="mono">${esc(x.job_no)}</span> ${esc(x.title)}<div class="meta">${esc(x.metal||'')} · ${fmtDate(x.created_at)}</div></span><span class="pill ${x.status==='completed'?'ok':'go'}">${x.status==='completed'?'Completed':esc(label(x.current_stage)||x.status)}</span></a>`).join('')+'</div>' : '<p class="hint">No jobs you can see.</p>'}</div>`;
@@ -704,29 +909,59 @@
   async function pageTeam(){
     const rows = await rpc('team_list');
     const stageList = TEMPLATES.map(t=>t.stage);
-    app.innerHTML = `<h2 style="margin:4px 0 2px;">Team</h2><p class="hint">Give each person their stages. They only see and update jobs at those stages, never clients or money.</p>
-      <div class="card"><h2>Adding someone new</h2><ol class="hint" style="margin:0;padding-left:18px;"><li>In Supabase, go to Authentication → Users → Add user, and create their login with their email and a password.</li><li>Come back here, refresh, and tick their stages below.</li></ol></div>
-      ${rows.map((u,i)=>{
-        const owner = u.role==='owner';
-        return `<div class="card"><div class="spread"><div><strong>${esc(u.display_name||u.email)}</strong><div class="meta">${esc(u.email)}</div></div><span class="pill ${u.role?'ok':'wait'}">${esc(u.role||'no access')}</span></div>
-        ${owner ? '<p class="hint" style="margin-top:8px;">Owner: all stages, clients and money.</p>' : `
+    const pending = rows.filter(u=>!u.role), team = rows.filter(u=>u.role);
+    const askedAs = r => ({ designer:'Designer', bench:'Bench / workshop', other:'Other' })[r] || r || '—';
+    const stageBoxes = (i, ticked) => `<div class="row" style="margin-top:8px;">${stageList.map(st=>`<label class="check" style="padding:4px 10px 4px 0;"><input type="checkbox" data-tm="${i}" value="${st}" ${(ticked||[]).includes(st)?'checked':''}> ${esc(label(st))}</label>`).join('')}</div>`;
+    const roleSel = (i, role) => `<select id="tm-r-${i}"><option value="staff" ${role==='staff'?'selected':''}>Staff (own stages only)</option><option value="designer" ${role==='designer'?'selected':''}>Designer</option><option value="supervisor" ${role==='supervisor'?'selected':''}>Supervisor (everything)</option></select>`;
+    const card = (u) => {
+      const i = rows.indexOf(u);
+      if (u.role==='owner') return `<div class="card"><div class="spread"><div><strong>${esc(u.display_name||u.email)}</strong><div class="meta">${esc(u.email)}</div></div><span class="pill ok">owner</span></div><p class="hint" style="margin-top:8px;">Owner: all stages, clients and money.</p></div>`;
+      const isNew = !u.role;
+      const suggestRole = isNew ? (u.requested_role==='designer' ? 'designer' : 'staff') : u.role;
+      return `<div class="card" ${isNew?'style="border-color:var(--warn);"':''}><div class="spread"><div><strong>${esc(u.display_name||u.email)}</strong><div class="meta">${esc(u.email)}${isNew?' · registered '+fmtDate(u.registered_at):''}</div>
+          ${isNew?`<div class="meta">Joining as: ${esc(askedAs(u.requested_role))}${u.email_confirmed?'':' · <span style="color:var(--warn);">email not confirmed yet</span>'}</div>`:''}</div>
+        <span class="pill ${isNew?'wait':'ok'}">${esc(u.role||'waiting')}</span></div>
         <div class="grid g2" style="margin-top:10px;"><div class="field"><label>Name</label><input type="text" id="tm-n-${i}" value="${esc(u.display_name||'')}"></div>
-          <div class="field"><label>Role</label><select id="tm-r-${i}"><option value="staff" ${u.role==='staff'?'selected':''}>Staff (own stages only)</option><option value="designer" ${u.role==='designer'?'selected':''}>Designer</option><option value="supervisor" ${u.role==='supervisor'?'selected':''}>Supervisor (everything)</option></select></div></div>
-        <div class="row" style="margin-top:8px;">${stageList.map(st=>`<label class="check" style="padding:4px 10px 4px 0;"><input type="checkbox" data-tm="${i}" value="${st}" ${(u.stages||[]).includes(st)?'checked':''}> ${esc(label(st))}</label>`).join('')}</div>
-        <div class="row" style="margin-top:8px;"><button class="btn primary small" type="button" data-save="${i}">Save</button></div>`}</div>`;
-      }).join('')}`;
+          <div class="field"><label>Role</label>${roleSel(i, suggestRole)}</div></div>
+        ${isNew?'<div class="meta" style="margin-top:8px;">The stages they asked for are ticked. Change them if needed.</div>':''}
+        ${stageBoxes(i, isNew ? u.requested_stages : u.stages)}
+        <div class="row" style="margin-top:8px;"><button class="btn ${isNew?'good':'primary'} small" type="button" data-save="${i}">${isNew?'Approve':'Save'}</button>${isNew?`<button class="btn ghost small" type="button" data-decline="${i}">Decline</button>`:`<button class="btn ghost small" type="button" data-remove="${i}">Remove access</button>`}</div></div>`;
+    };
+    app.innerHTML = `<h2 style="margin:4px 0 2px;">Team</h2><p class="hint">Give each person their stages. They only see and update jobs at those stages, never clients or money.</p>
+      ${pending.length ? `<div class="section-title">Waiting for approval · ${pending.length}</div>${pending.map(card).join('')}` : ''}
+      <div class="section-title">Team</div>${team.map(card).join('')}
+      <div class="card"><h2>Adding someone new</h2><ol class="hint" style="margin:0;padding-left:18px;"><li>Send them the app link. They tap <strong>Register</strong> on the sign-in screen and tick what they'll do.</li><li>They confirm their email.</li><li>They appear here under <strong>Waiting for approval</strong>. Check their stages and tap Approve.</li></ol>
+        <p class="hint" style="margin-top:8px;">You can change anyone's stages at any time. For example, when someone new takes over engraving, tick Engraving for them and untick it for the person handing over.</p></div>`;
     app.querySelectorAll('[data-save]').forEach(b=>b.addEventListener('click', async()=>{
       const i = b.dataset.save, u = rows[i];
       const stages = [...app.querySelectorAll(`[data-tm="${i}"]:checked`)].map(c=>c.value);
+      const role = $('tm-r-'+i).value;
+      if (!stages.length && role!=='supervisor' && !confirm('No stages ticked. '+(u.display_name||u.email)+' will see no jobs. Save anyway?')) return;
       b.disabled = true;
-      try { await rpc('team_set', { p_email:u.email, p_name:$('tm-n-'+i).value, p_role:$('tm-r-'+i).value, p_stages:stages }); toast('Saved '+(u.display_name||u.email)+'.'); route(); }
+      try { await rpc('team_set', { p_email:u.email, p_name:$('tm-n-'+i).value, p_role:role, p_stages:stages }); toast((u.role?'Saved ':'Approved ')+(u.display_name||u.email)+'.'); route(); }
       catch(e){ toast(e.message, true); b.disabled = false; }
+    }));
+    app.querySelectorAll('[data-decline]').forEach(b=>b.addEventListener('click', async()=>{
+      const u = rows[b.dataset.decline];
+      if (!confirm('Decline '+(u.display_name||u.email)+'? They will be removed from this list and won\'t get access.')) return;
+      b.disabled = true;
+      try { await rpc('team_decline', { p_email:u.email }); toast('Declined.'); route(); } catch(e){ toast(e.message, true); b.disabled = false; }
+    }));
+    app.querySelectorAll('[data-remove]').forEach(b=>b.addEventListener('click', async()=>{
+      const u = rows[b.dataset.remove];
+      if (!confirm('Remove all access for '+(u.display_name||u.email)+'? Their past work and hours stay in the records.')) return;
+      b.disabled = true;
+      try { await rpc('team_remove', { p_email:u.email }); toast('Access removed.'); route(); } catch(e){ toast(e.message, true); b.disabled = false; }
     }));
   }
 
   // ---------- start ----------
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
-  if (S) boot(); else showLogin();
+  const link = readAuthLink();
+  if (link && link.error) showLogin('in', link.error);
+  else if (link && link.type === 'recovery') showLogin('newpw');
+  else if (link && link.type === 'signup') { toast('Email confirmed. Welcome!'); boot(); }
+  else if (S) boot(); else showLogin();
 })();
 </script>
 </body>
